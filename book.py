@@ -147,7 +147,7 @@ class Book:
 
         if level is None:
             return
-        
+
         side = level.side
         quote = self.quote(side)
         if quote == level:
@@ -204,7 +204,7 @@ def print_book_and_orders(book, broker):
         for lvl in levels:
             r = lvl.__str__()
             if lvl.price in order_dict:
-                r += '| ' + str(order_dict[lvl.price].size)
+                r += '| ' + str(order_dict[lvl.price].pending)
             print(r)
 
     print_side(Side.BID)

@@ -9,7 +9,7 @@ class CancelReq:
     def __init__(self, side, order_id):
         self.side = side
         self.order_id = order_id
-        self.oid = uuid.uuid1()
+        self.oid = str(uuid.uuid1())
 
 
 class NewReq(CancelReq):
@@ -21,7 +21,8 @@ class NewReq(CancelReq):
 
 class ReplaceReq(NewReq):
     def __init__(self, side, order_id, price, size):
-        super().__init__(side, order_id, price, size)
+        super().__init__(side, price, size)
+        self.order_id = order_id
 
 
 class Order:
@@ -30,7 +31,7 @@ class Order:
         self.side = side
 
         self.order_id = -1
-        self.oid = uuid.uuid1()
+        self.oid = str(uuid.uuid1())
         self.status = OrderStatus.NEW
         self.amount = size
         self.pending = size
@@ -50,34 +51,28 @@ class OrderManager:
         self.request_queue = []
 
     def on_ack(self, details):
-        if details['ok'] == 'ok':
-            oid = details['oid']
-            order = self.by_oid[oid]
-            order.order_id  = details['data']['id']
 
-            #price = details['data']['price']
-            #side  = Side.parseSide(details['data']['side'])
-            order.pending = details['data']['pending']
-            order.amount = details['data']['amount']
-            order.status = OrderStatus.ACK
-            del self.by_oid[oid]
-            self.by_order_id[order.order_id] = order
+        oid = details['oid']
+        order = self.by_oid[oid]
+        order.order_id = details['data']['id']
 
-        else:
-            print(json.dumps(details))
+        #price = details['data']['price']
+        #side  = Side.parseSide(details['data']['side'])
+        order.pending = details['data']['pending']
+        order.amount = details['data']['amount']
+        order.status = OrderStatus.ACK
+        del self.by_oid[oid]
+        self.by_order_id[order.order_id] = order
 
     def on_replace(self, details):
-        if details['ok'] == 'ok':
-            order_id = details['data']['id']
-            o = self.by_order_id[order_id]
-            o.price = details['data']['price']
+        order_id = details['data']['id']
+        o = self.by_order_id[order_id]
+        o.price = details['data']['price']
 
-            o.amount = details['data']['amount']
-            o.pending = details['data']['amount']
+        o.amount = details['data']['amount']
+        o.pending = details['data']['amount']
 
-            o.status = OrderStatus.ACK
-        else:
-            print(json.dumps(details))
+        o.status = OrderStatus.ACK
 
     def on_cancel(self, details):
         order_id = details['data']['id']
@@ -104,26 +99,50 @@ class OrderManager:
         return self.by_order_id[order_id]
 
 
-class DummyExecution:
+class RiskManager:
+    NORMAL = 1
+    CANCEL_ALL = 2
+
+    def __init__(self, broker):
+        self.broker = broker
+        self.status = RiskManager.NORMAL
+
+    def set_normal(self):
+        self.status = RiskManager.NORMAL
+
+    def set_cancel_all(self):
+        self.status = RiskManager.CANCEL_ALL
+        self.broker.cancel_all()
+
+    def trading_allowed(self):
+        return self.status == RiskManager.NORMAL
+
+
+class Broker:
 
     def __init__(self, om: OrderManager):
         self.om = om
         self.orders = BipolarContainer({}, {})
+        self.rm = RiskManager(self)
 
     def request(self, tag, side, price, size):
         orders_side = self.orders.side(side)
+        if not self.rm.trading_allowed():
+            self.cancel_all()
+            return
 
         def can_replace():
-            return tag in orders_side and OrderStatus.ACK
+            return tag in orders_side and orders_side[tag].status == OrderStatus.ACK
 
         def can_new():
-            return tag not in orders_side or orders_side[tag].status == OrderStatus.ACK
+            return tag not in orders_side or orders_side[tag].status == OrderStatus.COMPLETED
 
         if can_replace():
-            # self.om.replace_req(tag, side, price, size)
+            order_id = orders_side[tag].order_id
+            self.om.replace_req(order_id, side, price, size)
             pass
         elif can_new():
-            # orders_side[tag] = self.om.new_req(side, price, size)
+            orders_side[tag] = self.om.new_req(side, price, size)
             pass
         else:
             print('order in transition')
@@ -132,5 +151,15 @@ class DummyExecution:
         order = self.orders.side(side)[tag]
         if order is not None:
             self.om.cancel_req(order.order_id, order.side)
+
+    def cancel_all(self):
+
+        def cancel_side(side):
+            for tag in self.orders.side(side).keys():
+                self.cancel(tag, side)
+
+        cancel_side(Side.BID)
+        cancel_side(Side.ASK)
+
 
 

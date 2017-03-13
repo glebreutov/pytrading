@@ -7,7 +7,7 @@ import json
 import websockets
 
 from mm.book import Book, Side
-from mm.broker import Order, NewReq, ReplaceReq, CancelReq
+from mm.orders import Order, NewReq, ReplaceReq, CancelReq
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
 
@@ -113,28 +113,19 @@ async def hello():
             data = await websocket.recv()
             if data is not None:
                 parsed = json.loads(data)
+                print(parsed)
                 event = parsed['e']
                 if event == 'md_update':
                     engine.on_md(parsed)
                 elif event == 'ping':
                     await websocket.send(json.dumps({'e': 'pong'}))
-                elif event == "place-order":
-                    # new order ack
+                elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
                     engine.order_event(event, parsed)
-                elif event == "cancel-replace-order":
-                    engine.order_event(event, parsed)
-                    # replaced
-                elif event == "cancel-order":
-                    engine.order_event(event, parsed)
-                    # cancelled
-                elif event == "tx":
-                    engine.order_event(event, parsed)
-                    # execution!
-                    engine.on_exec(parsed)
 
             q = engine.order_manager.request_queue
             while len(q) > 0:
                 req = engine.order_manager.request_queue.pop()
                 await websocket.send(serialize_request(req))
+                print(req)
 
 asyncio.get_event_loop().run_until_complete(hello())
