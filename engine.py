@@ -1,16 +1,17 @@
 
 
 from mm.book import Book, Side, print_book_and_orders
-from mm.broker import DummyExecution
+from mm.broker import DummyExecution, OrderManager
 from mm.pnl import PNL
 
 
 class Engine:
     def __init__(self, algo_class):
+        self.order_manager = OrderManager()
         self.book = Book()
         self.pnl = PNL()
         self.book.quote_subscribers.append(self.pnl)
-        self.execution = DummyExecution()
+        self.execution = DummyExecution(self.order_manager)
         self.algo = algo_class(self)
     
     def on_md(self, md):

@@ -1,4 +1,3 @@
-from enum import Enum
 from functools import reduce
 
 
@@ -31,6 +30,10 @@ class Side:
     @classmethod
     def opposite(cls, side):
         return Side.BID if side == Side.ASK else Side.BID
+
+    @classmethod
+    def parseSide(cls, str):
+        return Side.BID if str == 'buy' else Side.ASK
 
 
 class BipolarContainer:
@@ -122,10 +125,10 @@ class Book:
                 return find_level(q.next_level)
 
         level = find_level(self.quote(side))
-        if level is None:
-            self.add_level(side, price, size)
-        elif size == 0:
+        if size < 0.00000001:
             self.delete_level(level)
+        elif level is None:
+            self.add_level(side, price, size)
         else:
             level.size = size
 
@@ -142,6 +145,9 @@ class Book:
             else:
                 return find_parent(find, source.next_level)
 
+        if level is None:
+            return
+        
         side = level.side
         quote = self.quote(side)
         if quote == level:
@@ -181,12 +187,6 @@ class Book:
 
     def is_valid(self):
         return self.quote(Side.BID) is not None and self.quote(Side.ASK) is not None
-
-
-class Order(Level):
-    def __init__(self, tag, side, price, size):
-        Level.__init__(self, side, price, size)
-        self.tag = tag
 
 
 def print_book_and_orders(book, broker):
