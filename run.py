@@ -1,13 +1,11 @@
 import asyncio
 import datetime
-import hashlib
-import hmac
 import json
 
 import websockets
 
-from mm.book import Book, Side
-from mm.orders import Order, NewReq, ReplaceReq, CancelReq
+from mm.cex_serialization import auth_request, subscribe_msg, serialize_request
+from mm.client_serialization import serialize_book, serialize_orders
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
 
@@ -18,88 +16,12 @@ class Config:
     secret = 'QmiVM7rdIcVkD2yxJUlBFe1yQU'
 
 
-def create_signature(key, secret):  # (string key, string secret)
-    timestamp = int(datetime.datetime.now().timestamp())  # UNIX timestamp in seconds
-    string = "{}{}".format(timestamp, key)
-    return timestamp, hmac.new(secret.encode(), string.encode(), hashlib.sha256).hexdigest()
-
-
-def auth_request(key, secret):
-    timestamp, signature = create_signature(key, secret)
-    return json.dumps({'e': 'auth',
-                       'auth': {'key': key, 'signature': signature, 'timestamp': timestamp, }, 'oid': 'auth', })
-
-
-def subscribe_msg():
-    return json.dumps({
-        "e": "order-book-subscribe",
-        "data": {
-            "pair": [
-                "BTC",
-                "USD"
-            ],
-            "subscribe": True,
-            "depth": 5
-        },
-        "oid": "1435927928274_3_order-book-subscribe"
-    })
-
-
-def serialize_size(side):
-    return 'buy' if side == Side.BID else Side.ASK
-
-
-def serialize_request(req):
-    if type(req) == NewReq:
-        return json.dumps({
-            "e": "place-order",
-            "data": {
-                "pair": [
-                    "BTC",
-                    "USD"
-                ],
-                "amount": req.size,
-                "price": req.price,
-                "type": serialize_size(req.size)
-            },
-            "oid": req.oid
-        })
-    elif type(req) == ReplaceReq:
-        return json.dumps({
-            "e": "cancel-replace-order",
-            "data": {
-                "order_id": req.order_id,
-                "pair": [
-                    "BTC",
-                    "USD"
-                ],
-                "amount": req.size,
-                "price": req.price,
-                "type": serialize_size(req.size)
-            },
-            "oid": req.oid
-        })
-    elif type(req) == CancelReq:
-        return json.dumps({
-            "e": "cancel-order",
-            "data": {
-                "order_id": req.order_id
-            },
-            "oid": req.oid
-        })
-    else:
-        raise RuntimeError
-
-
 engine = Engine(Marketmaker)
-
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
         greeting = await websocket.recv()
-
         print(greeting)
-
         req = auth_request(Config.key, Config.secret)
         await websocket.send(req)
         print("> {}".format(req))
@@ -108,24 +30,45 @@ async def hello():
         print(greeting)
 
         await websocket.send(subscribe_msg())
-
         while True:
             data = await websocket.recv()
-            if data is not None:
-                parsed = json.loads(data)
-                print(parsed)
-                event = parsed['e']
-                if event == 'md_update':
-                    engine.on_md(parsed)
-                elif event == 'ping':
-                    await websocket.send(json.dumps({'e': 'pong'}))
-                elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
-                    engine.order_event(event, parsed)
+            await tick(websocket, data)
 
-            q = engine.order_manager.request_queue
-            while len(q) > 0:
-                req = engine.order_manager.request_queue.pop()
-                await websocket.send(serialize_request(req))
-                print(req)
 
-asyncio.get_event_loop().run_until_complete(hello())
+async def tick(websocket, data):
+    parsed = json.loads(data)
+    print(parsed)
+    event = parsed['e']
+    if event == 'md_update':
+        engine.on_md(parsed)
+    elif event == 'ping':
+        await websocket.send(json.dumps({'e': 'pong'}))
+    elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
+        engine.order_event(event, parsed)
+
+    q = engine.order_manager.request_queue
+    while len(q) > 0:
+        req = engine.order_manager.request_queue.pop()
+        await websocket.send(serialize_request(req))
+        print(req)
+
+
+async def serve_client(websocket, path):
+    while True:
+        await websocket.send(serialize_book(engine.book))
+        await websocket.send(serialize_orders(engine.order_manager))
+        await asyncio.sleep(3)
+
+start_server = websockets.serve(serve_client, '127.0.0.1', 5678)
+
+
+loop = asyncio.get_event_loop()
+
+
+loop.run_until_complete(asyncio.gather(
+    start_server,
+    hello(),
+))
+loop.run_forever()
+
+
