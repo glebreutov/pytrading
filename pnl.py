@@ -5,7 +5,7 @@ class SidePnl:
     def __init__(self):
         self.position = 0
         self.pending = 0
-        self.quote = 0
+        self.quote_price = 0
 
 
 class PNL:
@@ -24,11 +24,10 @@ class PNL:
         return abs(self.position())
 
     def quote_changed(self, quote):
-        # self.pnl[quote.side].quote = quote.price
-        pass
+        self.pnl[quote.side].quote_price = quote.price
 
     def balance(self):
-        return abs(self.position() * self.pnl[Side.opposite_side(self.position())].quote)
+        return abs(self.position() * self.pnl[Side.opposite_side(self.position())].quote_price)
 
     def on_exec(self, details):
         pass

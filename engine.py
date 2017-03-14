@@ -1,8 +1,12 @@
+from decimal import Decimal
 
+import decimal
 
 from mm.book import Book, Side, print_book_and_orders
 from mm.orders import Broker, OrderManager
 from mm.pnl import PNL
+
+
 
 
 class Engine:
@@ -16,15 +20,17 @@ class Engine:
     
     def on_md(self, md):
         # update book
-        for x in md['data']['bids']:
-            self.book.increment_level(Side.BID, int(1000*float(x[0])), float(x[1]))
+        def update_side(side, side_name):
+            for price, size in md['data'][side_name]:
+                self.book.increment_level(side, Decimal(str(price)), Decimal(str(size)))
 
-        for x in md['data']['asks']:
-            self.book.increment_level(Side.ASK, int(1000*float(x[0])), float(x[1]))
+        update_side(Side.BID, 'bids')
+        update_side(Side.ASK, 'asks')
+
 
         if self.book.is_valid():
-            #print_book_and_orders(self.book, self.execution)
-            #print('###########')
+            print_book_and_orders(self.book, self.execution)
+            print('###########')
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md(md)

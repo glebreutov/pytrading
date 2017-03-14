@@ -5,8 +5,8 @@ import pnl
 
 
 class MMParams:
-    liq_behind_exit = 0.01
-    liq_behind_entry = 1
+    liq_behind_exit = 2
+    liq_behind_entry = 2
     order_size = 0.01
 
 
@@ -27,13 +27,13 @@ class Marketmaker:
         engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
-        for side in Side.sides:
-            if self.engine.book.quote(side).volume() > MMParams.liq_behind_entry:
-                self.engine.execution.request(
-                        tag=0,
-                        side=side,
-                        price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry),
-                        size=MMParams.order_size)
+        #for side in Side.sides:
+        if self.engine.book.quote(Side.ASK).volume() > MMParams.liq_behind_entry:
+            self.engine.execution.request(
+                    tag=0,
+                    side=Side.ASK,
+                    price=calc_price(self.engine.book.quote(Side.ASK), MMParams.liq_behind_entry),
+                    size=MMParams.order_size)
         # Side.apply_sides(
         #     lambda side: self.engine.execution.request(
         #         tag=0,

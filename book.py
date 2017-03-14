@@ -83,7 +83,7 @@ class Level:
             self.next_level.append(level)
 
     def __str__(self):
-        return reduce(lambda acc, x: acc + str(x) + '\t', [self.side, self.price, "{:>10.8}".format(self.size)], '')
+        return reduce(lambda acc, x: acc + str(x) + '\t', [self.side, "{:>10.8}".format(self.price), "{:>10.8}".format(self.size)], '')
 
     def print_side(self, acc):
 

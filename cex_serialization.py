@@ -34,8 +34,8 @@ def subscribe_msg():
     })
 
 
-def serialize_size(side):
-    return 'buy' if side == Side.BID else Side.ASK
+def serialize_side(side):
+    return 'buy' if side == Side.BID else 'sell'
 
 
 def serialize_request(req):
@@ -48,8 +48,8 @@ def serialize_request(req):
                     "USD"
                 ],
                 "amount": req.size,
-                "price": req.price,
-                "type": serialize_size(req.size)
+                "price": str(req.price),
+                "type": serialize_side(req.side)
             },
             "oid": req.oid
         })
@@ -63,8 +63,8 @@ def serialize_request(req):
                     "USD"
                 ],
                 "amount": req.size,
-                "price": req.price,
-                "type": serialize_size(req.size)
+                "price": str(req.price),
+                "type": serialize_side(req.side)
             },
             "oid": req.oid
         })

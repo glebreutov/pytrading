@@ -42,20 +42,22 @@ async def hello():
 
 async def tick(websocket, data):
     parsed = json.loads(data)
-    print(parsed)
+
     event = parsed['e']
     if event == 'md_update':
         engine.on_md(parsed)
     elif event == 'ping':
         await websocket.send(json.dumps({'e': 'pong'}))
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
+        print(parsed)
         engine.order_event(event, parsed)
 
     q = engine.order_manager.request_queue
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
-        await websocket.send(serialize_request(req))
-        print(req)
+        sreq = serialize_request(req)
+        await websocket.send(sreq)
+        print(sreq)
 
 
 async def serve_client(websocket, path):
@@ -74,10 +76,12 @@ async def serve_client(websocket, path):
 
         await asyncio.sleep(1)
 
-start_server = websockets.serve(serve_client, '127.0.0.1', 5678)
+start_server = websockets.serve(serve_client, '10.115.66.134', 5678)
 
 
 loop = asyncio.get_event_loop()
+
+# {'e': 'tx', 'data': {'d': 'user:up104309133:a:BTC', 'c': 'order:3757803898:a:BTC', 'a': '0.01000000', 'ds': '0.04312206', 'cs': '0.01000000', 'user': 'up104309133', 'symbol': 'BTC', 'order': 3757803898, 'amount': '-0.01000000', 'type': 'sell', 'time': '2017-03-14T11:36:47.149Z', 'balance': '0.04312206', 'id': '3757803899'}}
 
 
 loop.run_until_complete(asyncio.gather(
