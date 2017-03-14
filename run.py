@@ -11,10 +11,15 @@ from mm.marketmaker import Marketmaker
 
 
 class Config:
-    url = 'wss://ws.cex.io/ws/'
-    key = 'IeUhsOax31Gmt3OYfFAIFHEuJo'
-    secret = 'QmiVM7rdIcVkD2yxJUlBFe1yQU'
+    url = None
+    key = None
+    secret = None
 
+with open('config.json', 'r') as f:
+    load = json.load(f)
+    Config.url = load['url']
+    Config.key = load['key']
+    Config.secret = load['secret']
 
 engine = Engine(Marketmaker)
 
@@ -57,7 +62,17 @@ async def serve_client(websocket, path):
     while True:
         await websocket.send(serialize_book(engine.book))
         await websocket.send(serialize_orders(engine.order_manager))
-        await asyncio.sleep(3)
+
+        # parsed = json.loads(data)
+        # if 'e' in parsed and parsed['e'] == 'rm' and 'new_status' in parsed:
+        #     if parsed['new_status'] == 'NORMAL':
+        #         engine.execution.rm.set_normal()
+        #     elif parsed['new_status'] == 'CANCELALL':
+        #         engine.execution.rm.set_cancel_all()
+        #     else:
+        #         print('wrong RM status')
+
+        await asyncio.sleep(1)
 
 start_server = websockets.serve(serve_client, '127.0.0.1', 5678)
 

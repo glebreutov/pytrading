@@ -23,8 +23,8 @@ class Engine:
             self.book.increment_level(Side.ASK, int(1000*float(x[0])), float(x[1]))
 
         if self.book.is_valid():
-            print_book_and_orders(self.book, self.execution)
-            print('###########')
+            #print_book_and_orders(self.book, self.execution)
+            #print('###########')
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md(md)
