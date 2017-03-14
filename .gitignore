@@ -3,3 +3,5 @@ __pycache__/
 *.iml
 config.json
 config_prod.json
+client/node_modules/
+client/.idea/

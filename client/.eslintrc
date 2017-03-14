@@ -1,0 +1,32 @@
+{
+  "extends": ["plugin:react/recommended", "standard"],
+  "parserOptions": {
+    "ecmaVersion": 7,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "impliedStrict": true,
+      "jsx": true
+    }
+  },
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true
+  },
+  "parser": "babel-eslint",
+  "plugins": [
+    "react"
+  ],
+  "globals": {
+    "beforeEach": true,
+    "describe": true,
+    "expect": true,
+    "it": true,
+    "React": true,
+    "xdescribe": true,
+    "xit": true
+  },
+  "rules": {
+    "comma-dangle": ["error", "always-multiline"]
+  }
+}
