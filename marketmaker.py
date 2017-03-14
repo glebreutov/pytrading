@@ -6,7 +6,7 @@ import pnl
 
 class MMParams:
     liq_behind_exit = 0.01
-    liq_behind_entry = 0.1
+    liq_behind_entry = 1
     order_size = 0.01
 
 
