@@ -78,3 +78,16 @@ def serialize_request(req):
         })
     else:
         raise RuntimeError
+
+
+def open_orders():
+    return json.dumps({
+        "e": "open-orders",
+        "data": {
+            "pair": [
+                "BTC",
+                "USD"
+            ]
+        },
+        "oid": "1435927928274_6_open-orders"
+    })

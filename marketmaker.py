@@ -5,8 +5,9 @@ import pnl
 
 
 class MMParams:
-    liq_behind_exit = 2
-    liq_behind_entry = 2
+    min_levels = 10
+    liq_behind_exit = 1
+    liq_behind_entry = 4
     order_size = 0.01
 
 
@@ -27,20 +28,18 @@ class Marketmaker:
         engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
-        #for side in Side.sides:
-        if self.engine.book.quote(Side.ASK).volume() > MMParams.liq_behind_entry:
-            self.engine.execution.request(
-                    tag=0,
-                    side=Side.ASK,
-                    price=calc_price(self.engine.book.quote(Side.ASK), MMParams.liq_behind_entry),
-                    size=MMParams.order_size)
-        # Side.apply_sides(
-        #     lambda side: self.engine.execution.request(
-        #         tag=0,
-        #         side=side,
-        #         price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry),
-        #         size=MMParams.order_size)
-        # )
+
+        bid_quote = self.engine.book.quote(Side.BID)
+        ask_quote = self.engine.book.quote(Side.ASK)
+        if min(bid_quote.volume(), ask_quote.volume()) >= MMParams.liq_behind_entry \
+            and min(bid_quote.levels(), ask_quote.levels()) > MMParams.min_levels:
+            for side in Side.sides:
+                    self.engine.execution.request(
+                            tag=0,
+                            side=side,
+                            price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry),
+                            #price= 500 if side == Side.BID else 2000,
+                            size=MMParams.order_size)
 
     def exit_market(self):
         Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))

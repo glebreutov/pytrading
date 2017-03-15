@@ -104,6 +104,12 @@ class Level:
         else:
             return self.size + self.next_level.volume()
 
+    def levels(self):
+        if self.next_level is None:
+            return 1
+        else:
+            return 1+self.next_level.levels()
+
 
 class Book:
     def __init__(self):

@@ -42,13 +42,14 @@ class Ack:
 
 
 class Replaced(Ack):
-    def __init__(self, oid, order_id, pending, amount):
+    def __init__(self, oid, order_id, pending, amount, price):
         super().__init__(oid, order_id, pending, amount)
+        self.price = Decimal(str(price))
 
 
 class Cancelled(Ack):
-    def __init__(self, oid, order_id, pending, amount):
-        super().__init__(oid, order_id, pending, amount)
+    def __init__(self, oid, order_id):
+        super().__init__(oid, order_id, 0, 0)
 
 
 class Order:
@@ -76,50 +77,6 @@ class OrderManager:
         self.by_oid = {}
         self.request_queue = []
 
-    def on_ack(self, details):
-
-        oid = details['oid']
-        order = self.by_oid[oid]
-        order.order_id = details['data']['id']
-
-        # price = details['data']['price']
-        # side  = Side.parseSide(details['data']['side'])
-        order.pending = details['data']['pending']
-        order.amount = details['data']['amount']
-        order.status = OrderStatus.ACK
-        del self.by_oid[oid]
-        self.by_order_id[order.order_id] = order
-
-    def on_replace(self, details):
-        order_id = details['data']['id']
-        o = self.by_order_id[order_id]
-        o.price = details['data']['price']
-
-        o.amount = details['data']['amount']
-        o.pending = details['data']['pending']
-
-        o.status = OrderStatus.ACK
-
-    def on_cancel(self, details):
-        order_id = details['data']['id']
-        order = self.by_order_id[order_id]
-        order.status = OrderStatus.COMPLETED
-        del order
-
-    def on_execution(self, details):
-        order_id = details['data']['id']
-        order = self.by_order_id[order_id]
-        order.pending -= abs(details['data']['amount'])
-        if order.pending <= 0:
-            order.status = OrderStatus.COMPLETED
-        if order.pending < 0:
-            print('error order amount less than zero')
-            # {'e': 'tx',
-            #  'data': {'d': 'user:up104309133:a:BTC', 'c': 'order:3757803898:a:BTC', 'a': '0.01000000', 'ds': '0.04312206',
-            #           'cs': '0.01000000', 'user': 'up104309133', 'symbol': 'BTC', 'order': 3757803898,
-            #           'amount': '-0.01000000', 'type': 'sell', 'time': '2017-03-14T11:36:47.149Z', 'balance': '0.04312206',
-            #           'id': '3757803899'}}
-
     def new_req(self, side, price, size):
         req = NewReq(side, price, size)
         order = Order(side, price, size)
@@ -127,13 +84,68 @@ class OrderManager:
         self.request_queue.append(req)
         return order
 
+    def on_ack(self, ack: Ack):
+        order = self.by_oid[ack.oid]
+        order.order_id = ack.order_id
+        order.pending = ack.pending
+        order.amount = ack.amount
+        order.status = OrderStatus.ACK
+        self.by_order_id[order.order_id] = order
+        del self.by_oid[ack.oid]
+
     def replace_req(self, order_id, side, price, size):
-        self.request_queue.append(ReplaceReq(side, order_id, price, size))
-        return self.by_order_id[order_id]
+        replace_req = ReplaceReq(side, order_id, price, size)
+        if order_id not in self.by_order_id:
+            raise RuntimeError
+
+        if replace_req.oid in self.by_oid:
+            raise RuntimeError
+
+        order = self.by_order_id[order_id]
+        if order.price == price and order.pending == size:
+            return
+
+        self.by_oid[replace_req.oid] = order
+        order.status = OrderStatus.REQ_SENT
+        self.request_queue.append(replace_req)
+        return order
+
+    def on_replace(self, rep: Replaced):
+        # if rep.order_id not in self.by_order_id:
+        #     print('error, unknown order replacement'+str(rep))
+        #     return
+
+        o = self.by_oid[rep.oid]
+        if o.order_id != rep.order_id:
+            del self.by_order_id[o.order_id]
+            o.order_id = rep.order_id
+            self.by_order_id[o.order_id] = o
+
+        o.price = rep.price
+        o.amount = rep.pending
+        o.pending = rep.amount
+        o.status = OrderStatus.ACK
+        del self.by_oid[rep.oid]
 
     def cancel_req(self, order_id, side):
         self.request_queue.append(CancelReq(side, order_id))
         return self.by_order_id[order_id]
+
+    def on_cancel(self, canc: Cancelled):
+
+        order = self.by_order_id[canc.order_id]
+        order.status = OrderStatus.COMPLETED
+        del self.by_order_id[canc.order_id]
+        del order
+
+    def on_execution(self, tx: Exec):
+
+        order = self.by_order_id[tx.order_id]
+        order.pending -= abs(tx.amount)
+        if order.pending <= 0:
+            order.status = OrderStatus.COMPLETED
+        if order.pending < 0:
+            print('error order amount less than zero')
 
 
 class RiskManager:
@@ -187,12 +199,14 @@ class Broker:
         order = self.orders.side(side)[tag]
         if order is not None:
             self.om.cancel_req(order.order_id, order.side)
+            del self.orders.side(side)[tag]
 
     def cancel_all(self):
+        def cancel_side(side, lst):
+            for tag, order in lst.items():
+                if order.status == OrderStatus.ACK:
+                    self.om.cancel_req(order.order_id, order.side)
+            lst.clear()
 
-        def cancel_side(side):
-            for tag in self.orders.side(side).keys():
-                self.cancel(tag, side)
-
-        cancel_side(Side.BID)
-        cancel_side(Side.ASK)
+        cancel_side(Side.BID, self.orders.side(Side.BID))
+        cancel_side(Side.ASK, self.orders.side(Side.ASK))

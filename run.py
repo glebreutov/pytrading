@@ -4,10 +4,11 @@ import json
 
 import websockets
 
-from mm.cex_serialization import auth_request, subscribe_msg, serialize_request
+from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
 from mm.client_serialization import serialize_book, serialize_orders
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
+from mm.test_algo import TestReplace, TestCancel, TestExec
 
 
 class Config:
@@ -15,13 +16,13 @@ class Config:
     key = None
     secret = None
 
-with open('config.json', 'r') as f:
+with open('config_prod.json', 'r') as f:
     load = json.load(f)
     Config.url = load['url']
     Config.key = load['key']
     Config.secret = load['secret']
 
-engine = Engine(Marketmaker)
+engine = Engine(TestExec)
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
@@ -51,13 +52,19 @@ async def tick(websocket, data):
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
         print(parsed)
         engine.order_event(event, parsed)
+    else:
+        print(parsed)
 
     q = engine.order_manager.request_queue
+    req_count = len(q)
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
         sreq = serialize_request(req)
         await websocket.send(sreq)
         print(sreq)
+
+    if req_count > 0:
+        await websocket.send(open_orders())
 
 
 async def serve_client(websocket, path):
@@ -76,7 +83,7 @@ async def serve_client(websocket, path):
 
         await asyncio.sleep(1)
 
-start_server = websockets.serve(serve_client, '10.115.66.134', 5678)
+start_server = websockets.serve(serve_client, '127.0.0.1', 5678)
 
 
 loop = asyncio.get_event_loop()

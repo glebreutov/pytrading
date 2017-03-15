@@ -3,7 +3,7 @@ from decimal import Decimal
 import decimal
 
 from mm.book import Book, Side, print_book_and_orders
-from mm.orders import Broker, OrderManager
+from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec
 from mm.pnl import PNL
 
 
@@ -27,10 +27,9 @@ class Engine:
         update_side(Side.BID, 'bids')
         update_side(Side.ASK, 'asks')
 
-
         if self.book.is_valid():
-            print_book_and_orders(self.book, self.execution)
-            print('###########')
+            # print_book_and_orders(self.book, self.execution)
+            # print('###########')
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md(md)
@@ -41,21 +40,38 @@ class Engine:
             self.algo.on_exec(details)
 
     def order_event(self, event, parsed):
-        if parsed['ok'] != 'ok':
+        if 'ok' in parsed and parsed['ok'] != 'ok':
             print('Order error')
-            print(parsed)
+            self.execution.rm.set_cancel_all()
             return
 
         if event == "place-order":
+            ack = Ack(parsed['oid'],
+                      str(parsed['data']['id']),
+                      Decimal(str(parsed['data']['pending'])),
+                      Decimal(str(parsed['data']['amount'])))
             # new order ack
-            self.order_manager.on_ack(parsed)
+            self.order_manager.on_ack(ack)
         elif event == "cancel-replace-order":
-            self.order_manager.on_replace(parsed)
+            repl = Replaced(parsed['oid'],
+                            str(parsed['data']['id']),
+                            Decimal(str(parsed['data']['pending'])),
+                            Decimal(str(parsed['data']['amount'])),
+                            Decimal(str(parsed['data']['price'])))
+            self.order_manager.on_replace(repl)
 
             # replaced
         elif event == "cancel-order":
-            self.order_manager.on_cancel(parsed)
+            canc = Cancelled(parsed['oid'],
+                             str(parsed['data']['order_id']))
+            self.order_manager.on_cancel(canc)
             # cancelled
         elif event == "tx":
+            tx = Exec(Decimal(str(parsed['data']['amount'])),
+                      Side.parseSide(parsed['data']['type']),
+                      str(parsed['data']['order']))
             # execution!
-            self.on_exec(parsed)
+            #self.order_manager.on_execution(tx)
+            #self.pnl.execution(tx)
+            #print("Balance " + str(self.pnl.balance()))
+            self.on_exec(tx)

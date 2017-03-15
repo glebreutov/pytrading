@@ -1,5 +1,7 @@
 from book import Side
 
+from mm.orders import Exec
+
 
 class SidePnl:
     def __init__(self):
@@ -14,8 +16,8 @@ class PNL:
         self.ask = self.pnl[Side.ASK]
         self.bid = self.pnl[Side.BID]
 
-    def execution(self, details):
-        self.pnl[Side.sign(details.side)].position + abs(details.size)
+    def execution(self, details: Exec):
+        self.pnl[details.side].position + abs(details.amount)
 
     def position(self):
         return self.pnl[Side.BID].position - self.pnl[Side.ASK].position
