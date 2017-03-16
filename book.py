@@ -29,7 +29,7 @@ class Side:
 
     @classmethod
     def opposite(cls, side):
-        return Side.BID if side == Side.ASK else Side.BID
+        return Side.BID if side == Side.ASK else Side.ASK
 
     @classmethod
     def parseSide(cls, str):
