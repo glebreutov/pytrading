@@ -66,12 +66,14 @@ class Engine:
                              str(parsed['data']['order_id']))
             self.order_manager.on_cancel(canc)
             # cancelled
-        elif event == "tx":
+        # omg what a hack
+        elif event == "tx" and 'symbol2' in parsed['data']:
             tx = Exec(Decimal(str(parsed['data']['amount'])),
                       Side.parseSide(parsed['data']['type']),
                       str(parsed['data']['order']))
             # execution!
-            #self.order_manager.on_execution(tx)
-            #self.pnl.execution(tx)
-            #print("Balance " + str(self.pnl.balance()))
+            self.order_manager.on_execution(tx)
+            self.pnl.execution(tx)
+            print("Balance " + str(self.pnl.balance()))
+            print("Position " + str(self.pnl.position()))
             self.on_exec(tx)

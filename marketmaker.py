@@ -7,7 +7,7 @@ import pnl
 class MMParams:
     min_levels = 10
     liq_behind_exit = 1
-    liq_behind_entry = 4
+    liq_behind_entry = 1
     order_size = 0.01
 
 
@@ -38,10 +38,10 @@ class Marketmaker:
                             tag=0,
                             side=side,
                             price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry),
-                            #price= 500 if side == Side.BID else 2000,
                             size=MMParams.order_size)
 
     def exit_market(self):
+        print()
         Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         exit_side = Side.opposite_side(self.engine.pnl.position())
         price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)

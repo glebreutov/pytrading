@@ -22,7 +22,7 @@ with open('config_prod.json', 'r') as f:
     Config.key = load['key']
     Config.secret = load['secret']
 
-engine = Engine(TestExec)
+engine = Engine(Marketmaker)
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
@@ -52,6 +52,8 @@ async def tick(websocket, data):
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
         print(parsed)
         engine.order_event(event, parsed)
+    elif event == 'open-orders':
+        print('!open orders ' + str(len(parsed['data'])))
     else:
         print(parsed)
 

@@ -1,11 +1,12 @@
 from book import Side
+from decimal import Decimal
 
 from mm.orders import Exec
 
 
 class SidePnl:
     def __init__(self):
-        self.position = 0
+        self.position = Decimal(0)
         self.pending = 0
         self.quote_price = 0
 
@@ -29,7 +30,4 @@ class PNL:
         self.pnl[quote.side].quote_price = quote.price
 
     def balance(self):
-        return abs(self.position() * self.pnl[Side.opposite_side(self.position())].quote_price)
-
-    def on_exec(self, details):
-        pass
+        return self.abs_position() * self.pnl[Side.opposite_side(self.position())].quote_price
