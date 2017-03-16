@@ -6,8 +6,8 @@ import pnl
 
 class MMParams:
     min_levels = 10
-    liq_behind_exit = 1
-    liq_behind_entry = 1
+    liq_behind_exit = 0.5
+    liq_behind_entry = 0.7
     order_size = 0.01
 
 
@@ -45,7 +45,7 @@ class Marketmaker:
         Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         exit_side = Side.opposite_side(self.engine.pnl.position())
         price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
-        self.engine.broker.request(1, exit_side, price, self.engine.pnl.abs_position)
+        self.engine.execution.request(1, exit_side, price, self.engine.pnl.abs_position)
 
     def tick(self):
         if self.engine.pnl.position() == 0:

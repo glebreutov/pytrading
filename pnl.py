@@ -18,7 +18,7 @@ class PNL:
         self.bid = self.pnl[Side.BID]
 
     def execution(self, details: Exec):
-        self.pnl[details.side].position + abs(details.amount)
+        self.pnl[details.side].position += abs(details.amount)
 
     def position(self):
         return self.pnl[Side.BID].position - self.pnl[Side.ASK].position

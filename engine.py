@@ -35,7 +35,6 @@ class Engine:
                 self.algo.on_md(md)
 
     def on_exec(self, details):
-        self.pnl.on_exec(details)
         if hasattr(self.algo, 'on_exec'):
             self.algo.on_exec(details)
 
