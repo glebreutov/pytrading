@@ -195,27 +195,6 @@ class Book:
         return self.quote(Side.BID) is not None and self.quote(Side.ASK) is not None
 
 
-def print_book_and_orders(book, broker):
-    def print_side(side):
-        levels = []
-        book.quote(side).print_side(levels)
-        orders = broker.orders.side(side).values()
-
-        def f(a, x):
-            a[x.price] = x
-
-        order_dict = {}
-        reduce(f, orders, order_dict)
-
-        for lvl in levels:
-            r = lvl.__str__()
-            if lvl.price in order_dict:
-                r += '| ' + str(order_dict[lvl.price].pending)
-            print(r)
-
-    print_side(Side.BID)
-    print('--------')
-    print_side(Side.ASK)
 
 
 

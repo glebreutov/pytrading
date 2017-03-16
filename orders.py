@@ -136,14 +136,13 @@ class OrderManager:
         order = self.by_order_id[canc.order_id]
         order.status = OrderStatus.COMPLETED
         del self.by_order_id[canc.order_id]
-        del order
 
     def on_execution(self, tx: Exec):
-
         order = self.by_order_id[tx.order_id]
         order.pending -= abs(tx.amount)
         if order.pending <= 0:
             order.status = OrderStatus.COMPLETED
+            del self.by_order_id[tx.order_id]
         if order.pending < 0:
             print('error order amount less than zero')
 

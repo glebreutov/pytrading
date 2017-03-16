@@ -1,12 +1,12 @@
+import traceback
 from decimal import Decimal
 
 import decimal
 
-from mm.book import Book, Side, print_book_and_orders
+from mm.book import Book, Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec
 from mm.pnl import PNL
-
-
+from mm.printout import print_book_and_orders
 
 
 class Engine:
@@ -28,8 +28,13 @@ class Engine:
         update_side(Side.ASK, 'asks')
 
         if self.book.is_valid():
-            # print_book_and_orders(self.book, self.execution)
-            # print('###########')
+            try:
+                print_book_and_orders(self.book, self.execution)
+                print("Balance " + str(self.pnl.balance()))
+                print("Position " + str(self.pnl.position()))
+                print('###########')
+            except Exception:
+                traceback.print_exc()
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md(md)
@@ -41,7 +46,7 @@ class Engine:
     def order_event(self, event, parsed):
         if 'ok' in parsed and parsed['ok'] != 'ok':
             print('Order error')
-            self.execution.rm.set_cancel_all()
+            # self.execution.rm.set_cancel_all()
             return
 
         if event == "place-order":
@@ -73,6 +78,4 @@ class Engine:
             # execution!
             self.order_manager.on_execution(tx)
             self.pnl.execution(tx)
-            print("Balance " + str(self.pnl.balance()))
-            print("Position " + str(self.pnl.position()))
             self.on_exec(tx)

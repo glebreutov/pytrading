@@ -50,7 +50,7 @@ async def tick(websocket, data):
     elif event == 'ping':
         await websocket.send(json.dumps({'e': 'pong'}))
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
-        print(parsed)
+        #print(parsed)
         engine.order_event(event, parsed)
     elif event == 'open-orders':
         print('!open orders ' + str(len(parsed['data'])))
