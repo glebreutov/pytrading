@@ -10,7 +10,7 @@ import pnl
 class MMParams:
     min_levels = 5
     liq_behind_exit = 0.3
-    liq_behind_entry = BipolarContainer(Decimal(0.5), Decimal(0.3))
+    liq_behind_entry = BipolarContainer(Decimal(2), Decimal(2))
     order_size = 0.01
 
 
@@ -45,10 +45,16 @@ class Marketmaker:
 
     def exit_market(self):
         print("placing exit order")
-        #Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
-        self.engine.execution.cancel_all()
+        Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         exit_side = Side.opposite_side(self.engine.pnl.position())
         price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
+        min_acceptable_price = self.specific_margin_price(
+            self.engine.pnl.last_traded_price(),
+            self.engine.pnl.last_traded_side(), Decimal(0.1))
+
+        if (price - min_acceptable_price) / abs(price - min_acceptable_price) == Side.sign(exit_side):
+            price = min_acceptable_price
+
         self.engine.execution.request(1, exit_side, price, str(self.engine.pnl.abs_position()))
 
     def tick(self):
@@ -62,3 +68,8 @@ class Marketmaker:
 
     def on_exec(self, details):
         self.tick()
+
+    def specific_margin_price(self, entry_price, entry_side, margin, entry_commisiion=0, exit_commision=0):
+        return entry_price \
+               + Side.sign(entry_side) * (margin + entry_commisiion) \
+               - Side.sign(entry_side) * exit_commision

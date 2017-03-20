@@ -1,6 +1,7 @@
 from book import Side
 from decimal import Decimal
 
+from mm.book import BipolarContainer
 from mm.orders import Exec
 
 
@@ -13,21 +14,28 @@ class SidePnl:
 
 class PNL:
     def __init__(self):
-        self.pnl = {Side.BID: SidePnl(), Side.ASK: SidePnl()}
-        self.ask = self.pnl[Side.ASK]
-        self.bid = self.pnl[Side.BID]
+        self.pnl = BipolarContainer(SidePnl(), SidePnl())
 
     def execution(self, details: Exec):
-        self.pnl[details.side].position += abs(details.amount)
+        side_pnl = self.pnl.side(details.side)
+        side_pnl.position += abs(details.amount)
+        side_pnl.last_price = details.price
+        self.pnl.side(Side.opposite(details.side)).last_price = 0
 
     def position(self):
-        return self.pnl[Side.BID].position - self.pnl[Side.ASK].position
+        return self.pnl.bid().position - self.pnl.ask().position
 
     def abs_position(self):
         return abs(self.position())
 
     def quote_changed(self, quote):
-        self.pnl[quote.side].quote_price = quote.price
+        self.pnl.side(quote.side).quote_price = quote.price
 
     def balance(self):
-        return self.abs_position() * self.pnl[Side.opposite_side(self.position())].quote_price
+        return self.abs_position() * self.pnl.side(Side.opposite_side(self.position())).quote_price
+
+    def last_traded_price(self):
+        return max(self.pnl.ask().last_price, self.pnl.bid().last_price)
+
+    def last_traded_side(self):
+        return Side.ASK if self.pnl.ask().last_price > 0 else Side.BID

@@ -27,10 +27,11 @@ class ReplaceReq(NewReq):
 
 
 class Exec:
-    def __init__(self, amount, side, order_id):
+    def __init__(self, amount, side, order_id, price: Decimal):
         self.order_id = order_id
         self.side = side
         self.amount = amount
+        self.price = price
 
 
 class Ack:

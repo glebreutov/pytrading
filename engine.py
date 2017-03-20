@@ -75,7 +75,8 @@ class Engine:
         elif event == "tx" and 'symbol2' in parsed['data']:
             tx = Exec(Decimal(str(parsed['data']['amount'])),
                       Side.parseSide(parsed['data']['type']),
-                      str(parsed['data']['order']))
+                      str(parsed['data']['order']),
+                      Decimal(str(parsed['data']['price'])))
             # execution!
             self.order_manager.on_execution(tx)
             self.pnl.execution(tx)
