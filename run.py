@@ -2,8 +2,11 @@ import asyncio
 import datetime
 import json
 
-import websockets
+import logging
 
+import atexit
+import websockets
+import time
 from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
 from mm.client_serialization import serialize_book, serialize_orders
 from mm.engine import Engine
@@ -16,12 +19,18 @@ class Config:
     key = None
     secret = None
 
+
+def logname():
+    return 'logs/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
+
+
 with open('config_prod.json', 'r') as f:
     load = json.load(f)
     Config.url = load['url']
     Config.key = load['key']
     Config.secret = load['secret']
 
+logging.basicConfig(filename=logname(),level=logging.INFO)
 engine = Engine(Marketmaker)
 
 async def hello():
@@ -50,11 +59,12 @@ async def tick(websocket, data):
     elif event == 'ping':
         await websocket.send(json.dumps({'e': 'pong'}))
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
-        #print(parsed)
+        logging.info("{\"in\":" + data + "}")
         engine.order_event(event, parsed)
     elif event == 'open-orders':
         print('!open orders ' + str(len(parsed['data'])))
     else:
+        logging.info("{\"in\":" + data + "}")
         print(parsed)
 
     q = engine.order_manager.request_queue
@@ -62,11 +72,12 @@ async def tick(websocket, data):
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
         sreq = serialize_request(req)
+        logging.info("{\"out\":" + sreq + "}")
         await websocket.send(sreq)
         print(sreq)
 
-    if req_count > 0:
-        await websocket.send(open_orders())
+    # if req_count > 0:
+    #     await websocket.send(open_orders())
 
 
 async def serve_client(websocket, path):

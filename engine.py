@@ -46,6 +46,7 @@ class Engine:
     def order_event(self, event, parsed):
         if 'ok' in parsed and parsed['ok'] != 'ok':
             print('Order error')
+            print(parsed)
             # self.execution.rm.set_cancel_all()
             return
 
