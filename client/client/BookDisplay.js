@@ -1,24 +1,33 @@
 import React from 'react'
 import * as _ from 'lodash'
 
-export default function BookDisplay (props) {
-  const { book, myOrders } = props
+// indexes
+const price = 0
+const size = 1
+const side = 2
+export const toLevel = (side, price, size) => [price, size, side]
 
-  const consolidated = _.chain(book)
+export default function BookDisplay (props) {
+  const { bookLevels, myOrders } = props
+
+  const consolidated = _.chain(bookLevels)
     .map(level => {
-      const my = _.find(myOrders, {price: level.price})
+      const my = _.find(myOrders, order => order[price].eq(level[price]))
       return {
-        ...level,
-        mySize: my ? my.size : null,
+        side: level[side],
+        price: level[price],
+        size: level[size],
+        mySize: my ? my[size] : null,
       }
     })
     .concat(myOrders.map(myLevel => ({
-      ...myLevel,
+      side: myLevel[side],
+      price: myLevel[price],
       size: null,
-      mySize: myLevel.size,
+      mySize: myLevel[size],
     })))
-    .uniqBy('price')
-    .sortBy('price')
+    .sortBy(c => Number(c.price))
+    .sortedUniqBy(c => c.price.valueOf())
     .value()
   // console.log(consolidated)
   return <table className='order-table'>

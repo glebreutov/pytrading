@@ -1,16 +1,19 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import BookDisplay from './BookDisplay'
+import BookDisplay, {toLevel} from './BookDisplay'
+import Big from 'big.js/big'
 
 const bookData = {
-  book: [],
+  bookLevels: [],
   myOrders: [],
 }
 
 const socket = new WebSocket('ws://10.115.66.134:5678')
 const send = obj => socket.send(JSON.stringify(obj))
-const wsBookToBookEntry = side => wsEntry => ({side, price: wsEntry[0], size: wsEntry[1]})
-const wsOrderToBookEntry = wsEntry => ({side: wsEntry[2] === 'B' ? 'bid' : 'ask', price: wsEntry[0], size: wsEntry[1]})
+const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(wsEntry[1]))
+const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
+const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
+const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
 
 // Connection opened
 socket.addEventListener('open', () => console.log('socket open'))
@@ -18,7 +21,7 @@ socket.addEventListener('message', (event) => {
   console.log(event.data)
   const msg = JSON.parse(event.data)
   if (msg.e === 'book') {
-    bookData.book = [].concat(
+    bookData.bookLevels = [].concat(
       msg.details['B'].map(wsBookToBookEntry('bid')),
       msg.details['S'].map(wsBookToBookEntry('ask')),
     )
@@ -31,9 +34,6 @@ socket.addEventListener('message', (event) => {
 })
 socket.addEventListener('error', (error) => console.error(error))
 socket.addEventListener('close', (event) => console.log('ws connection closed', event))
-
-const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
-const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
 
 render(bookData)
 

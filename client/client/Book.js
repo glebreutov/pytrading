@@ -1,84 +1,74 @@
-import {OrderedMap, Map} from 'immutable'
-
+import Big from 'big.js/big'
+import { OrderedMap, Map } from 'immutable'
+import { assert, deepMapper } from '../tools'
 /**
- * @typedef {Object} Level
- * @property {Number} price
- * @property {Number} size
+ * 0 - price (base currency)
+ * 1 - size (quote currency)
+ * @typedef {Big[]} Level
  */
-
-/**
- * @typedef {OrderedMap.<Number, Number>} LevelList
- */
-
-function assert (condition, message) {
-  if (!condition) {
-    throw new Error(message)
-  }
-}
 
 export default class Book {
   static SIDE_BID = 'bid'
   static SIDE_ASK = 'ask'
+  static INDEX_PRICE = 0
+  static INDEX_SIZE = 1
+
   static priceComparators = {
-    [Book.SIDE_ASK]: (a, b) => a > b ? 1 : a < b ? -1 : 0,
-    [Book.SIDE_BID]: (a, b) => a < b ? 1 : a > b ? -1 : 0,
+    [Book.SIDE_ASK]: (a, b) => a.cmp(b),
+    [Book.SIDE_BID]: (a, b) => b.cmp(a),
   }
   static priceIsBetter (side, candidate, reference) {
     return Book.priceComparators[side](candidate, reference) < 0
   }
 
-  constructor (baseDigits, quoteDigits) {
-    /*
-     * best price comes first, numbers are integers (srcVal * 10^digits)
-     * bid (desc): {101: 10, 100: 1.5, ... }
-     * ask (asc) : {102: 1, 103: 20, ... }
-     */
-    /** @type {Map.<string, LevelList>} */
+  static assertSide (side) {
+    assert(side === Book.SIDE_BID || side === Book.SIDE_ASK, 'ArgumentException: side')
+  }
+  constructor () {
     this.levels = Map()
       .set(Book.SIDE_BID, OrderedMap())
       .set(Book.SIDE_ASK, OrderedMap())
-
-    const baseMultiplier = Math.pow(10, baseDigits)
-    this.toBaseInt = srcVal => Math.round(srcVal * baseMultiplier)
-    this.fromBaseInt = int => int / baseMultiplier
-    const quoteMultiplier = Math.pow(10, quoteDigits)
-    this.toQuoteInt = srcVal => Math.round(srcVal * quoteMultiplier)
-    this.fromQuoteInt = int => int / quoteMultiplier
   }
 
-  _setLevelSize (side, price, size) {
-    assert(side === Book.SIDE_BID || side === Book.SIDE_ASK, 'ArgumentException: side')
-    assert(size >= 0 && price > 0, `ArgumentException: ${size < 0 ? 'size' : 'price'}`)
+  /**
+   * best price comes first, numbers are Big from big.js
+   * @param side
+   * @return {Level[]}
+   */
+  getLevels (side) {
+    Book.assertSide(side)
+    return this.levels.get(side).entrySeq().toJS()
+  }
 
-    this.levels = this.levels.updateIn([side], levels =>
-      size === 0
-        ? levels
-          .delete(price)
-        : levels
-          .set(price, size)
-          .sortBy((v, k) => k, Book.priceComparators[side])
+  updateLevels (side, levels) {
+    Book.assertSide(side)
+    assert(Array.isArray(levels), 'ArgumentException: levels')
+
+    this.levels = this.levels.updateIn([side], currentLevels =>
+      currentLevels
+        .merge(Map(levels.map(deepMapper(Big))))
+        .filterNot(v => v.eq(0))
+        .sortBy((v, k) => k, Book.priceComparators[side])
     )
-  }
-
-  setLevelSize (side, price, size) {
-    this._setLevelSize(side, this.toBaseInt(price), this.toQuoteInt(size))
   }
 
   _incrementLevel (side, price, size) {
     const levelSize = this.levels.getIn([side, price])
-    if (!levelSize && size <= 0) {
+    if (!levelSize && size.lte(0)) {
       console.error(`incrementLevel ${price}/${size} failed: level not found`)
       return
     }
-    if (size < 0 && (levelSize + size) < 0) {
+    let newSize = levelSize.plus(size)
+    if (newSize.lt(0)) {
       console.warn(`incrementLevel ${price}/${size} warning: decremented too much`)
-      size = -levelSize
+      newSize = Big(0)
     }
-    this._setLevelSize(side, price, levelSize + size)
+    this._setLevelSize(side, price, newSize)
   }
 
   incrementLevel (side, price, size) {
-    this._incrementLevel(side, this.toBaseInt(price), this.toQuoteInt(size))
+    Book.assertSide(side)
+    this._incrementLevel(side, Big(price), Big(size))
   }
 
   /**
@@ -87,19 +77,21 @@ export default class Book {
    * are "better" than targetPrice even if they are equal.
    * @param side
    * @param targetPrice
-   * @return {Number|null} base currency amount or null, if the book was empty
+   * @return {Big} base currency amount or 0, if the book was empty
    */
   getDistance (side, targetPrice) {
-    targetPrice = this.toBaseInt(targetPrice)
-    let distance = null
+    Book.assertSide(side)
+    assert(targetPrice > 0, 'ArgumentException: targetPrice')
+
+    targetPrice = Big(targetPrice)
+    let distance = Big(0)
     // default reduce() does not support breaks
     this.levels.get(side).forEach((size, levelPrice) => {
       if (Book.priceIsBetter(side, targetPrice, levelPrice)) {
-        if (distance === null) { distance = 0 }
         // break
         return false
       }
-      distance += this.fromQuoteInt(size) * this.fromBaseInt(levelPrice)
+      distance = distance.plus(size.times(levelPrice))
     })
     return distance
   }
@@ -108,14 +100,18 @@ export default class Book {
    *
    * @param side
    * @param amount
-   * @return {Number|null} price or null, if the book was empty
+   * @return {Big|undefined} price or undefined, if the book was empty
    */
   getPriceAtDistance (side, amount) {
-    let price = null
+    Book.assertSide(side)
+    assert(amount > 0, 'ArgumentException: amount')
+
+    amount = Big(amount)
+    let price
     this.levels.get(side).forEach((size, levelPrice) => {
-      price = this.fromQuoteInt(levelPrice)
-      amount -= this.fromBaseInt(size) * price
-      if (amount < 0) {
+      price = levelPrice
+      amount = amount.minus(size.times(price))
+      if (amount.lt(0)) {
         // break
         return false
       }
@@ -130,13 +126,11 @@ export default class Book {
    * @return {Level}
    */
   getNextBetterLevel (side, referencePrice) {
-    referencePrice = this.toBaseInt(referencePrice)
-    const found = this.levels.get(side)
+    Book.assertSide(side)
+    referencePrice = Big(referencePrice)
+
+    return this.levels.get(side)
       .findLastEntry((size, levelPrice) => Book.priceIsBetter(side, levelPrice, referencePrice))
-    return found ? {
-      price: this.fromBaseInt(found[0]),
-      size: this.fromQuoteInt(found[1]),
-    } : null
   }
 
   /**
@@ -146,12 +140,10 @@ export default class Book {
    * @return {Level}
    */
   getNextWorseLevel (side, referencePrice) {
-    referencePrice = this.toBaseInt(referencePrice)
-    const found = this.levels.get(side)
+    Book.assertSide(side)
+    referencePrice = Big(referencePrice)
+
+    return this.levels.get(side)
       .findEntry((size, levelPrice) => Book.priceIsBetter(side, referencePrice, levelPrice))
-    return found ? {
-      price: this.fromBaseInt(found[0]),
-      size: this.fromQuoteInt(found[1]),
-    } : null
   }
 }
