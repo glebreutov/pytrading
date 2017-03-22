@@ -9,8 +9,8 @@ import pnl
 
 class MMParams:
     min_levels = 5
-    liq_behind_exit = 0.3
-    liq_behind_entry = BipolarContainer(Decimal(2), Decimal(2))
+    liq_behind_exit = 0.1
+    liq_behind_entry = BipolarContainer(Decimal(2), Decimal(1))
     order_size = 0.01
 
 
@@ -28,7 +28,7 @@ class Marketmaker:
 
     def __init__(self, engine):
         self.engine = engine
-        engine.book.quote_subscribers.append(self)
+        #engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
 
@@ -48,6 +48,7 @@ class Marketmaker:
         Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         exit_side = Side.opposite_side(self.engine.pnl.position())
         price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
+
         min_acceptable_price = self.specific_margin_price(
             self.engine.pnl.last_traded_price(),
             self.engine.pnl.last_traded_side(), Decimal(0.1))
@@ -73,3 +74,10 @@ class Marketmaker:
         return entry_price \
                + Side.sign(entry_side) * (margin + entry_commisiion) \
                - Side.sign(entry_side) * exit_commision
+
+
+mm = Marketmaker(None)
+bid_price = Decimal(1109.785)
+print(mm.specific_margin_price(bid_price, Side.BID, Decimal('1')))
+ask_price = 1000
+print(mm.specific_margin_price(bid_price, Side.ASK, Decimal('0.1')))

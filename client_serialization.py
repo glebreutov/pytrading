@@ -10,7 +10,7 @@ def serialize_book(book: Book):
     def serialize_side(side):
         quote = book.quote(side)
         while quote is not None:
-            c.side(side).append([quote.price, quote.size])
+            c.side(side).append([str(quote.price), str(quote.size)])
             quote = quote.next_level
     serialize_side(Side.BID)
     serialize_side(Side.ASK)

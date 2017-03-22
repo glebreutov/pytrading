@@ -147,6 +147,13 @@ class OrderManager:
         if order.pending < 0:
             print('error order amount less than zero')
 
+    def remove_order(self, oid):
+        order = self.by_oid[oid]
+        if order.order_id in self.by_order_id:
+            del self.by_order_id[order.order_id]
+        del order
+
+
 
 class RiskManager:
     NORMAL = 1
@@ -154,7 +161,7 @@ class RiskManager:
 
     def __init__(self, broker):
         self.broker = broker
-        self.status = RiskManager.NORMAL
+        self.status = RiskManager.CANCEL_ALL
 
     def set_normal(self):
         self.status = RiskManager.NORMAL

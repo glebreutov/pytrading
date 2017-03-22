@@ -10,7 +10,7 @@ import pnl
 class MMParams:
     min_levels = 10
     liq_behind_exit = 1
-    liq_behind_entry = 0
+    liq_behind_entry = 2
     order_size = 0.01
 
 
@@ -71,8 +71,6 @@ class TestCancel:
                 # price=calc_price(self.engine.book.quote(Side.ASK), MMParams.liq_behind_entry),
                 price=500 + random.randrange(0, 3),
                 size=MMParams.order_size)
-
-
 
     def exit_market(self):
         self.engine.execution.cancel_all()

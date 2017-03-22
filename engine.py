@@ -44,20 +44,22 @@ class Engine:
             self.algo.on_exec(details)
 
     def order_event(self, event, parsed):
+        ok = True
         if 'ok' in parsed and parsed['ok'] != 'ok':
             print('Order error')
             print(parsed)
-            # self.execution.rm.set_cancel_all()
-            return
+            ok = False
 
-        if event == "place-order":
+        if event == "place-order" and ok:
             ack = Ack(parsed['oid'],
                       str(parsed['data']['id']),
                       Decimal(str(parsed['data']['pending'])),
                       Decimal(str(parsed['data']['amount'])))
             # new order ack
             self.order_manager.on_ack(ack)
-        elif event == "cancel-replace-order":
+        elif event == "place-order" and not ok:
+            self.order_manager.remove_order(parsed['oid'])
+        elif event == "cancel-replace-order" and ok:
             repl = Replaced(parsed['oid'],
                             str(parsed['data']['id']),
                             Decimal(str(parsed['data']['pending'])),
@@ -66,11 +68,17 @@ class Engine:
             self.order_manager.on_replace(repl)
 
             # replaced
-        elif event == "cancel-order":
+        elif event == "cancel-order" and ok:
             canc = Cancelled(parsed['oid'],
                              str(parsed['data']['order_id']))
             self.order_manager.on_cancel(canc)
             # cancelled
+        elif event in ["cancel-replace-order", "cancel-order"] and not ok:
+            if parsed['data']['error'] == 'Error: Order not found':
+                self.order_manager.remove_order(parsed['oid'])
+            else:
+                self.execution.rm.set_cancel_all()
+                print('error occures on replace cancelling orders')
         # omg what a hack
         elif event == "tx" and 'symbol2' in parsed['data']:
             tx = Exec(Decimal(str(parsed['data']['amount'])),

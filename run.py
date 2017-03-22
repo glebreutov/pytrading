@@ -24,14 +24,14 @@ def logname():
     return 'logs/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
 
 
-with open('config_prod.json', 'r') as f:
+with open('config.json', 'r') as f:
     load = json.load(f)
     Config.url = load['url']
     Config.key = load['key']
     Config.secret = load['secret']
 
 logging.basicConfig(filename=logname(),level=logging.INFO)
-engine = Engine(Marketmaker)
+engine = Engine(TestCancel)
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
@@ -86,7 +86,7 @@ async def serve_client(websocket, path):
         await websocket.send(serialize_orders(engine.order_manager))
 
         # parsed = json.loads(data)
-        # if 'e' in parsed and parsed['e'] == 'rm' and 'new_status' in parsed:
+        # if 'e' in parsed and  parsed['e'] == 'rm' and 'new_status' in parsed:
         #     if parsed['new_status'] == 'NORMAL':
         #         engine.execution.rm.set_normal()
         #     elif parsed['new_status'] == 'CANCELALL':
