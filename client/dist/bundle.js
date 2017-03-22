@@ -40102,7 +40102,12 @@ var bookData = {
   myOrders: []
 };
 
-var socket = new WebSocket('ws://10.115.66.134:5678');
+var state = {
+  error: null,
+  connected: false
+};
+
+var socket = new WebSocket('ws://127.0.0.1:5678');
 var send = function send(obj) {
   return socket.send(JSON.stringify(obj));
 };
@@ -40123,7 +40128,9 @@ var sendRMCancelAll = function sendRMCancelAll() {
 
 // Connection opened
 socket.addEventListener('open', function () {
-  return console.log('socket open');
+  state.connected = true;
+  state.error = null;
+  render(state, bookData);
 });
 socket.addEventListener('message', function (event) {
   console.log(event.data);
@@ -40134,19 +40141,26 @@ socket.addEventListener('message', function (event) {
   }
   if (msg.e === 'orders') {
     bookData.myOrders = msg.details.map(wsOrderToBookEntry);
-    render(bookData);
+    render(state, bookData);
   }
 });
-socket.addEventListener('error', function (error) {
-  return console.error(error);
+socket.addEventListener('error', function (err) {
+  state.error = err;
+  state.connected = false;
+  render(state, bookData);
 });
 socket.addEventListener('close', function (event) {
-  return console.log('ws connection closed', event);
+  state.connected = false;
+  console.log('ws connection closed', event);
+  if (!event.wasClean) {
+    state.error = event;
+  }
+  render(state, bookData);
 });
 
 render(bookData);
 
-function render(data) {
+function render(state, data) {
   _reactDom2.default.render(_react2.default.createElement(
     'div',
     null,
@@ -40155,19 +40169,30 @@ function render(data) {
       null,
       '(\u256F\xB0\u25A1\xB0\uFF09\u256F\uFE35 \u253B\u2501\u253B'
     ),
-    _react2.default.createElement(_BookDisplay2.default, data),
-    _react2.default.createElement(
+    !state.connected && !state.error && '...',
+    state.error && _react2.default.createElement(
       'div',
-      { className: 'controls' },
+      { className: 'error' },
+      'Error ',
+      state.error.code
+    ),
+    state.connected && _react2.default.createElement(
+      'div',
+      null,
+      _react2.default.createElement(_BookDisplay2.default, data),
       _react2.default.createElement(
-        'button',
-        { onClick: sendRMNormal },
-        'Normal'
-      ),
-      _react2.default.createElement(
-        'button',
-        { onClick: sendRMCancelAll },
-        'Cancell All'
+        'div',
+        { className: 'controls' },
+        _react2.default.createElement(
+          'button',
+          { onClick: sendRMNormal },
+          'Normal'
+        ),
+        _react2.default.createElement(
+          'button',
+          { onClick: sendRMCancelAll },
+          'Cancell All'
+        )
       )
     )
   ), document.getElementById('app'));
