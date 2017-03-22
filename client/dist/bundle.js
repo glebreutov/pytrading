@@ -40113,7 +40113,7 @@ var state = {
   connected: false
 };
 
-var socket = new WebSocket('ws://10.115.66.153:5678');
+var socket = new WebSocket('ws://127.0.0.1:5678');
 var send = function send(obj) {
   return socket.send(JSON.stringify(obj));
 };

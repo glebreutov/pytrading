@@ -13,7 +13,7 @@ const state = {
   connected: false,
 }
 
-const socket = new WebSocket('ws://10.115.66.153:5678')
+const socket = new WebSocket('ws://127.0.0.1:5678')
 const send = obj => socket.send(JSON.stringify(obj))
 const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(wsEntry[1]))
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
