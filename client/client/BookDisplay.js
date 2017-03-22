@@ -8,7 +8,7 @@ const side = 2
 export const toLevel = (side, price, size) => [price, size, side]
 
 export default function BookDisplay (props) {
-  const { bookLevels, myOrders } = props
+  const { bookLevels, myOrders, reverse, showOnlySide } = props
 
   const consolidated = _.chain(bookLevels)
     .map(level => {
@@ -26,7 +26,8 @@ export default function BookDisplay (props) {
       size: null,
       mySize: myLevel[size],
     })))
-    .sortBy(c => Number(c.price))
+    .filter(c => showOnlySide ? c.side === showOnlySide : true)
+    .sortBy(c => reverse ? -Number(c.price) : Number(c.price))
     .sortedUniqBy(c => c.price.valueOf())
     .value()
   // console.log(consolidated)

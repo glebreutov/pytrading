@@ -13,7 +13,7 @@ const state = {
   connected: false,
 }
 
-const socket = new WebSocket('ws://127.0.0.1:5678')
+const socket = new WebSocket('ws://10.115.66.153:5678')
 const send = obj => socket.send(JSON.stringify(obj))
 const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(wsEntry[1]))
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
@@ -64,11 +64,12 @@ function render (state, data) {
       {!state.connected && !state.error && '...'}
       {state.error && <div className='error'>Error {state.error.code}</div>}
       {state.connected && <div>
-        <BookDisplay {...data} />
-          <div className='controls'>
-            <button onClick={sendRMNormal}>Normal</button>
-            <button onClick={sendRMCancelAll}>Cancell All</button>
-          </div>
+        <div className='controls'>
+          <button onClick={sendRMNormal}>Normal</button>
+          <button onClick={sendRMCancelAll}>Cancell All</button>
+        </div>
+        <BookDisplay {...data} showOnlySide='ask' />
+        <BookDisplay {...data} showOnlySide='bid' reverse={true} />
       </div>}
     </div>,
     document.getElementById('app')

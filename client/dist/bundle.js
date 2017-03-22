@@ -9471,7 +9471,9 @@ var toLevel = exports.toLevel = function toLevel(side, price, size) {
 
 function BookDisplay(props) {
   var bookLevels = props.bookLevels,
-      myOrders = props.myOrders;
+      myOrders = props.myOrders,
+      reverse = props.reverse,
+      showOnlySide = props.showOnlySide;
 
 
   var consolidated = _.chain(bookLevels).map(function (level) {
@@ -9491,8 +9493,10 @@ function BookDisplay(props) {
       size: null,
       mySize: myLevel[size]
     };
-  })).sortBy(function (c) {
-    return Number(c.price);
+  })).filter(function (c) {
+    return showOnlySide ? c.side === showOnlySide : true;
+  }).sortBy(function (c) {
+    return reverse ? -Number(c.price) : Number(c.price);
   }).sortedUniqBy(function (c) {
     return c.price.valueOf();
   }).value();
@@ -40079,6 +40083,8 @@ module.exports = function(module) {
 "use strict";
 
 
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
 var _react = __webpack_require__(52);
 
 var _react2 = _interopRequireDefault(_react);
@@ -40107,7 +40113,7 @@ var state = {
   connected: false
 };
 
-var socket = new WebSocket('ws://127.0.0.1:5678');
+var socket = new WebSocket('ws://10.115.66.153:5678');
 var send = function send(obj) {
   return socket.send(JSON.stringify(obj));
 };
@@ -40179,7 +40185,6 @@ function render(state, data) {
     state.connected && _react2.default.createElement(
       'div',
       null,
-      _react2.default.createElement(_BookDisplay2.default, data),
       _react2.default.createElement(
         'div',
         { className: 'controls' },
@@ -40193,7 +40198,9 @@ function render(state, data) {
           { onClick: sendRMCancelAll },
           'Cancell All'
         )
-      )
+      ),
+      _react2.default.createElement(_BookDisplay2.default, _extends({}, data, { showOnlySide: 'ask' })),
+      _react2.default.createElement(_BookDisplay2.default, _extends({}, data, { showOnlySide: 'bid', reverse: true }))
     )
   ), document.getElementById('app'));
 }
