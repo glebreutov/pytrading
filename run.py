@@ -24,14 +24,14 @@ def logname():
     return 'logs/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
 
 
-with open('config.json', 'r') as f:
+with open('config_prod.json', 'r') as f:
     load = json.load(f)
     Config.url = load['url']
     Config.key = load['key']
     Config.secret = load['secret']
 
 logging.basicConfig(filename=logname(),level=logging.INFO)
-engine = Engine(TestCancel)
+engine = Engine(Marketmaker)
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
@@ -96,7 +96,53 @@ async def serve_client(websocket, path):
 
         await asyncio.sleep(1)
 
-start_server = websockets.serve(serve_client, '127.0.0.1', 5678)
+
+def consumer(msg):
+    print("new RM status" + msg)
+    new_status = json.loads(msg)['new_status']
+    if new_status == 'CANCELL_ALL':
+        engine.execution.rm.set_cancel_all()
+    elif new_status == 'NORMAL':
+        engine.execution.rm.set_normal()
+    else:
+        print("unknown RM status" + msg)
+
+async def book():
+    await asyncio.sleep(1)
+    return serialize_book(engine.book)
+
+async def orders():
+    await asyncio.sleep(1)
+    return serialize_orders(engine.order_manager)
+
+async def handler(websocket, path):
+    while True:
+        listener_task = asyncio.ensure_future(websocket.recv())
+        producer_task = asyncio.ensure_future(book())
+        producer_task2 = asyncio.ensure_future(orders())
+        done, pending = await asyncio.wait(
+            [listener_task, producer_task, producer_task2],
+            return_when=asyncio.FIRST_COMPLETED)
+
+        if listener_task in done:
+            message = listener_task.result()
+            consumer(message)
+        else:
+            listener_task.cancel()
+
+        if producer_task in done:
+            message = producer_task.result()
+            await websocket.send(message)
+        else:
+            producer_task.cancel()
+
+        if producer_task2 in done:
+            message = producer_task2.result()
+            await websocket.send(message)
+        else:
+            producer_task2.cancel()
+
+start_server = websockets.serve(handler, '127.0.0.1', 5678)
 
 
 loop = asyncio.get_event_loop()

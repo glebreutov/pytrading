@@ -28,7 +28,7 @@ class Marketmaker:
 
     def __init__(self, engine):
         self.engine = engine
-        #engine.book.quote_subscribers.append(self)
+        engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
 
@@ -76,8 +76,8 @@ class Marketmaker:
                - Side.sign(entry_side) * exit_commision
 
 
-mm = Marketmaker(None)
-bid_price = Decimal(1109.785)
-print(mm.specific_margin_price(bid_price, Side.BID, Decimal('1')))
-ask_price = 1000
-print(mm.specific_margin_price(bid_price, Side.ASK, Decimal('0.1')))
+# mm = Marketmaker(None)
+# bid_price = Decimal(1109.785)
+# print(mm.specific_margin_price(bid_price, Side.BID, Decimal('1')))
+# ask_price = 1000
+# print(mm.specific_margin_price(bid_price, Side.ASK, Decimal('0.1')))

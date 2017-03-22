@@ -19,7 +19,7 @@ def serialize_book(book: Book):
 
 def serialize_orders(om: OrderManager):
     order_dump = []
-    for x in om.by_order_id:
-        order_dump.append([x.price, x.pending, x.side])
+    for x in om.by_order_id.values():
+        order_dump.append([str(x.price), str(x.pending), str(x.side)])
 
     return json.dumps({"e": "orders", "details": order_dump})

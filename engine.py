@@ -28,13 +28,13 @@ class Engine:
         update_side(Side.ASK, 'asks')
 
         if self.book.is_valid():
-            try:
-                print_book_and_orders(self.book, self.execution)
-                print("Balance " + str(self.pnl.balance()))
-                print("Position " + str(self.pnl.position()))
-                print('###########')
-            except Exception:
-                traceback.print_exc()
+            # try:
+            #     print_book_and_orders(self.book, self.execution)
+            #     print("Balance " + str(self.pnl.balance()))
+            #     print("Position " + str(self.pnl.position()))
+            #     print('###########')
+            # except Exception:
+            #     traceback.print_exc()
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md(md)
@@ -86,6 +86,9 @@ class Engine:
                       str(parsed['data']['order']),
                       Decimal(str(parsed['data']['price'])))
             # execution!
+            print("Balance " + str(self.pnl.balance()))
+            print("Position " + str(self.pnl.position()))
+            print('###########')
             self.order_manager.on_execution(tx)
             self.pnl.execution(tx)
             self.on_exec(tx)
