@@ -1,7 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import BookDisplay, {toLevel} from './BookDisplay'
+import Executions from './Executions'
+import KV from './KV'
 import Big from 'big.js/big'
+import * as _ from 'lodash'
 
 const bookData = {
   bookLevels: [],
@@ -11,9 +14,11 @@ const bookData = {
 const state = {
   error: null,
   connected: false,
+  executions: [],
+  pnl: {},
 }
 
-const socket = new WebSocket('ws://127.0.0.1:5678')
+const socket = new WebSocket('ws://10.115.66.153:5678')
 const send = obj => socket.send(JSON.stringify(obj))
 const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(wsEntry[1]))
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
@@ -24,7 +29,7 @@ const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
 socket.addEventListener('open', () => {
   state.connected = true
   state.error = null
-  render(state, bookData)
+  render()
 })
 socket.addEventListener('message', (event) => {
   console.log(event.data)
@@ -38,13 +43,19 @@ socket.addEventListener('message', (event) => {
   }
   if (msg.e === 'orders') {
     bookData.myOrders = msg.details.map(wsOrderToBookEntry)
-    render(state, bookData)
+    render()
+  }
+  if (msg.e === 'pnl') {
+    state.pnl = msg.details
+  }
+  if (msg.e === 'exec') {
+    state.executions = state.executions.concat(msg.details)
   }
 })
 socket.addEventListener('error', (err) => {
   state.error = err
   state.connected = false
-  render(state, bookData)
+  render()
 })
 socket.addEventListener('close', (event) => {
   state.connected = false
@@ -52,25 +63,29 @@ socket.addEventListener('close', (event) => {
   if (!event.wasClean) {
     state.error = event
   }
-  render(state, bookData)
+  render()
 })
 
-render(bookData)
+render()
 
-function render (state, data) {
+function render () {
   ReactDOM.render(
     <div>
-      <h1>(╯°□°）╯︵ ┻━┻</h1>
       {!state.connected && !state.error && '...'}
       {state.error && <div className='error'>Error {state.error.code}</div>}
-      {state.connected && <div>
+      {!state.connected && '- not connected -'}
+      <div>
+        <div className='controls'>
+          <KV data={state.pnl} />
+        </div>
         <div className='controls'>
           <button onClick={sendRMNormal}>Normal</button>
           <button onClick={sendRMCancelAll}>Cancell All</button>
         </div>
-        <BookDisplay {...data} showOnlySide='ask' />
-        <BookDisplay {...data} showOnlySide='bid' reverse={true} />
-      </div>}
+        <BookDisplay {...bookData} showOnlySide='ask' />
+        <BookDisplay {...bookData} showOnlySide='bid' reverse={true} />
+        <Executions executions={state.executions} />
+      </div>
     </div>,
     document.getElementById('app')
   )
