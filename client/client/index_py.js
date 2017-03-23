@@ -17,9 +17,8 @@ const state = {
   executions: [],
   pnl: {},
 }
-
-// const socket = new WebSocket('ws://10.115.66.153:5678')
-const socket = new WebSocket('ws://127.0.0.1:5678')
+const url = `ws://${window.location.hash.replace('#', '') || '127.0.0.1:5678'}`
+const socket = new WebSocket(url)
 const send = obj => socket.send(JSON.stringify(obj))
 const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(wsEntry[1]))
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
@@ -72,9 +71,12 @@ render()
 function render () {
   ReactDOM.render(
     <div>
-      {!state.connected && !state.error && '...'}
-      {state.error && <div className='error'>Error {state.error.code}</div>}
-      {!state.connected && '- not connected -'}
+      <h1>(╯°□°）╯︵ ┻━┻</h1>
+      <div className='controls'>
+        {!state.connected && !state.error && <div>connecting...</div>}
+        {state.error && <div className='error'>Error {state.error.code}</div>}
+        {state.connected ? `- connected to ${url} -` : `- not connected to ${url} -`}
+      </div>
       <div>
         <div className='controls'>
           <KV data={state.pnl} />

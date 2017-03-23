@@ -40253,9 +40253,8 @@ var state = {
   executions: [],
   pnl: {}
 };
-
-// const socket = new WebSocket('ws://10.115.66.153:5678')
-var socket = new WebSocket('ws://127.0.0.1:5678');
+var url = 'ws://' + (window.location.hash.replace('#', '') || '127.0.0.1:5678');
+var socket = new WebSocket(url);
 var send = function send(obj) {
   return socket.send(JSON.stringify(obj));
 };
@@ -40318,14 +40317,27 @@ function render() {
   _reactDom2.default.render(_react2.default.createElement(
     'div',
     null,
-    !state.connected && !state.error && '...',
-    state.error && _react2.default.createElement(
-      'div',
-      { className: 'error' },
-      'Error ',
-      state.error.code
+    _react2.default.createElement(
+      'h1',
+      null,
+      '(\u256F\xB0\u25A1\xB0\uFF09\u256F\uFE35 \u253B\u2501\u253B'
     ),
-    !state.connected && '- not connected -',
+    _react2.default.createElement(
+      'div',
+      { className: 'controls' },
+      !state.connected && !state.error && _react2.default.createElement(
+        'div',
+        null,
+        'connecting...'
+      ),
+      state.error && _react2.default.createElement(
+        'div',
+        { className: 'error' },
+        'Error ',
+        state.error.code
+      ),
+      state.connected ? '- connected to ' + url + ' -' : '- not connected to ' + url + ' -'
+    ),
     _react2.default.createElement(
       'div',
       null,
