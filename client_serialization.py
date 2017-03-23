@@ -2,6 +2,7 @@ import json
 
 from mm.book import Book, BipolarContainer, Side
 from mm.orders import OrderManager
+from mm.pnl import PNL
 
 
 def serialize_book(book: Book):
@@ -23,3 +24,9 @@ def serialize_orders(om: OrderManager):
         order_dump.append([str(x.price), str(x.pending), str(x.side)])
 
     return json.dumps({"e": "orders", "details": order_dump})
+
+
+def serialize_pnl(pnl: PNL):
+    return json.dumps({"e": "pnl", "details": {'position': str(pnl.position()),
+                       'balance': str(pnl.balance()),
+                       'last traded price': str(pnl.last_traded_price())}})

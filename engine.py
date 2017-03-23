@@ -79,16 +79,41 @@ class Engine:
             else:
                 self.execution.rm.set_cancel_all()
                 print('error occures on replace cancelling orders')
+
+        elif event == "order":
+            order_id = str(parsed['data']['id'])
+            if order_id in self.order_manager.by_order_id:
+                order = self.order_manager.by_order_id[order_id]
+
+                tx = Exec(Decimal(str(parsed['data']['remains'])) / 100000000,
+                          order.side,
+                          order_id,
+                          order.price)
+                print('remains ' + str(Decimal(str(parsed['data']['remains'])) / 100000000))
+                side, delta, price = self.order_manager.on_execution(tx)
+                self.pnl.execution(side, delta, price)
+                #self.on_exec(tx)
+                print("Balance " + str(self.pnl.balance()))
+                print("Position " + str(self.pnl.position()))
+                print("last traded price " + str(self.pnl.last_traded_price()))
+                print("last traded side " + str(self.pnl.last_traded_side()))
+                print('###########')
+            else:
+                print('wtf, unknown order id')
+                self.execution.rm.set_cancel_all()
+
         # omg what a hack
-        elif event == "tx" and 'symbol2' in parsed['data']:
-            tx = Exec(Decimal(str(parsed['data']['amount'])),
-                      Side.parseSide(parsed['data']['type']),
-                      str(parsed['data']['order']),
-                      Decimal(str(parsed['data']['price'])))
-            # execution!
-            print("Balance " + str(self.pnl.balance()))
-            print("Position " + str(self.pnl.position()))
-            print('###########')
-            self.order_manager.on_execution(tx)
-            self.pnl.execution(tx)
-            self.on_exec(tx)
+        # elif event == "tx" and 'symbol2' in parsed['data']:
+        #     tx = Exec(Decimal(str(parsed['data']['amount'])),
+        #               Side.parseSide(parsed['data']['type']),
+        #               str(parsed['data']['order']),
+        #               Decimal(str(parsed['data']['price'])))
+        #     # execution!
+        #     self.order_manager.on_execution(tx)
+        #     self.pnl.execution(tx)
+        #     self.on_exec(tx)
+        #     print("Balance " + str(self.pnl.balance()))
+        #     print("Position " + str(self.pnl.position()))
+        #     print("last traded price " + str(self.pnl.last_traded_price()))
+        #     print("last traded side " + str(self.pnl.last_traded_side()))
+        #     print('###########')

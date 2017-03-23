@@ -58,7 +58,7 @@ async def tick(websocket, data):
         engine.on_md(parsed)
     elif event == 'ping':
         await websocket.send(json.dumps({'e': 'pong'}))
-    elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx"]:
+    elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx", "order"]:
         logging.info("{\"in\":" + data + "}")
         engine.order_event(event, parsed)
     elif event == 'open-orders':

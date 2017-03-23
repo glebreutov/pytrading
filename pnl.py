@@ -10,17 +10,20 @@ class SidePnl:
         self.position = Decimal(0)
         self.pending = 0
         self.quote_price = 0
+        self.last_price = 0
 
 
 class PNL:
     def __init__(self):
         self.pnl = BipolarContainer(SidePnl(), SidePnl())
 
-    def execution(self, details: Exec):
-        side_pnl = self.pnl.side(details.side)
-        side_pnl.position += abs(details.amount)
-        side_pnl.last_price = details.price
-        self.pnl.side(Side.opposite(details.side)).last_price = 0
+    def execution(self, side, delta, price):
+        print([side, delta, price])
+        if delta > 0:
+            side_pnl = self.pnl.side(side)
+            side_pnl.position += abs(delta)
+            side_pnl.last_price = price
+            self.pnl.side(Side.opposite(side)).last_price = 0
 
     def position(self):
         return self.pnl.bid().position - self.pnl.ask().position

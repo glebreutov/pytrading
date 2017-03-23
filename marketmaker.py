@@ -24,6 +24,23 @@ def calc_price(quote, liq_behind):
     return quote.price
 
 
+def specific_margin_price(entry_price, entry_side, margin, entry_commisiion=0, exit_commision=0):
+    return entry_price \
+           + Side.sign(entry_side) * (margin + entry_commisiion) \
+           - Side.sign(entry_side) * exit_commision
+
+
+def exit_price(enter_side, enter_price, opposite_quote_price):
+    min_acceptable_price = specific_margin_price(
+        enter_price,
+        enter_side, Decimal(str(0.1)))
+
+    if (opposite_quote_price - min_acceptable_price) / abs(opposite_quote_price - min_acceptable_price) \
+            != Side.sign(enter_side):
+        opposite_quote_price = min_acceptable_price
+    return opposite_quote_price
+
+
 class Marketmaker:
 
     def __init__(self, engine):
@@ -47,16 +64,10 @@ class Marketmaker:
         print("placing exit order")
         Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         exit_side = Side.opposite_side(self.engine.pnl.position())
-        price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
+        quote_price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
+        eprice = exit_price(self.engine.pnl.last_traded_side(), self.engine.pnl.last_traded_price(), quote_price)
 
-        min_acceptable_price = self.specific_margin_price(
-            self.engine.pnl.last_traded_price(),
-            self.engine.pnl.last_traded_side(), Decimal(0.1))
-
-        if (price - min_acceptable_price) / abs(price - min_acceptable_price) == Side.sign(exit_side):
-            price = min_acceptable_price
-
-        self.engine.execution.request(1, exit_side, price, str(self.engine.pnl.abs_position()))
+        self.engine.execution.request(1, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
         if self.engine.pnl.position() == 0:
@@ -70,11 +81,16 @@ class Marketmaker:
     def on_exec(self, details):
         self.tick()
 
-    def specific_margin_price(self, entry_price, entry_side, margin, entry_commisiion=0, exit_commision=0):
-        return entry_price \
-               + Side.sign(entry_side) * (margin + entry_commisiion) \
-               - Side.sign(entry_side) * exit_commision
 
+
+
+
+
+# print(exit_price(Side.BID, 100, 105))
+# print(exit_price(Side.ASK, 105, 100))
+#
+# print(exit_price(Side.BID, 100, 90))
+# print(exit_price(Side.ASK, 105, 110))
 
 # mm = Marketmaker(None)
 # bid_price = Decimal(1109.785)

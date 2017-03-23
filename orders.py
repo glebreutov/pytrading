@@ -62,7 +62,6 @@ class Order:
         self.oid = str(uuid.uuid1())
         self.status = OrderStatus.NEW
         self.amount = size
-        self.pending = size
 
 
 class OrderStatus(Enum):
@@ -140,19 +139,22 @@ class OrderManager:
 
     def on_execution(self, tx: Exec):
         order = self.by_order_id[tx.order_id]
-        order.pending -= abs(tx.amount)
-        if order.pending <= 0:
+        delta = order.amount - abs(tx.amount)
+        order.amount = abs(tx.amount)
+
+        if order.amount <= 0:
             order.status = OrderStatus.COMPLETED
             del self.by_order_id[tx.order_id]
-        if order.pending < 0:
+        if order.amount < 0:
             print('error order amount less than zero')
+
+        return order.side, delta, order.price
 
     def remove_order(self, oid):
         order = self.by_oid[oid]
+        order.status = OrderStatus.COMPLETED
         if order.order_id in self.by_order_id:
             del self.by_order_id[order.order_id]
-        del order
-
 
 
 class RiskManager:
