@@ -8,7 +8,7 @@ import atexit
 import websockets
 import time
 from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
-from mm.client_serialization import serialize_book, serialize_orders
+from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
 from mm.test_algo import TestReplace, TestCancel, TestExec
@@ -80,23 +80,6 @@ async def tick(websocket, data):
     #     await websocket.send(open_orders())
 
 
-async def serve_client(websocket, path):
-    while True:
-        await websocket.send(serialize_book(engine.book))
-        await websocket.send(serialize_orders(engine.order_manager))
-
-        # parsed = json.loads(data)
-        # if 'e' in parsed and  parsed['e'] == 'rm' and 'new_status' in parsed:
-        #     if parsed['new_status'] == 'NORMAL':
-        #         engine.execution.rm.set_normal()
-        #     elif parsed['new_status'] == 'CANCELALL':
-        #         engine.execution.rm.set_cancel_all()
-        #     else:
-        #         print('wrong RM status')
-
-        await asyncio.sleep(1)
-
-
 def consumer(msg):
     print("new RM status" + msg)
     new_status = json.loads(msg)['new_status']
@@ -107,21 +90,20 @@ def consumer(msg):
     else:
         print("unknown RM status" + msg)
 
-async def book():
-    await asyncio.sleep(1)
-    return serialize_book(engine.book)
 
-async def orders():
+async def sender():
     await asyncio.sleep(1)
-    return serialize_orders(engine.order_manager)
+    return [serialize_book(engine.book), serialize_orders(engine.order_manager),
+            serialize_pnl(engine.pnl), serialize_execs(engine.execution_sink)]
+
 
 async def handler(websocket, path):
     while True:
         listener_task = asyncio.ensure_future(websocket.recv())
-        producer_task = asyncio.ensure_future(book())
-        producer_task2 = asyncio.ensure_future(orders())
+        producer_task = asyncio.ensure_future(sender())
+
         done, pending = await asyncio.wait(
-            [listener_task, producer_task, producer_task2],
+            [listener_task, producer_task],
             return_when=asyncio.FIRST_COMPLETED)
 
         if listener_task in done:
@@ -131,18 +113,14 @@ async def handler(websocket, path):
             listener_task.cancel()
 
         if producer_task in done:
-            message = producer_task.result()
-            await websocket.send(message)
+            messages = producer_task.result()
+            for message in messages:
+                await websocket.send(message)
         else:
             producer_task.cancel()
 
-        if producer_task2 in done:
-            message = producer_task2.result()
-            await websocket.send(message)
-        else:
-            producer_task2.cancel()
 
-start_server = websockets.serve(handler, '127.0.0.1', 5678)
+start_server = websockets.serve(handler, 'localhost', 5678)
 
 
 loop = asyncio.get_event_loop()

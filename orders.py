@@ -205,10 +205,11 @@ class Broker:
             print('order in transition')
 
     def cancel(self, tag, side):
-        order = self.orders.side(side)[tag]
-        if order is not None and order.status == OrderStatus.ACK:
-            self.om.cancel_req(order.order_id, order.side)
-            del self.orders.side(side)[tag]
+        if tag in self.orders.side(side):
+            order = self.orders.side(side)[tag]
+            if order is not None and order.status == OrderStatus.ACK:
+                self.om.cancel_req(order.order_id, order.side)
+                del self.orders.side(side)[tag]
 
     def cancel_all(self):
         def cancel_side(side, lst):

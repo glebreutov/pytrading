@@ -9,9 +9,9 @@ import pnl
 
 class MMParams:
     min_levels = 5
-    liq_behind_exit = 0.1
-    liq_behind_entry = BipolarContainer(Decimal(2), Decimal(1))
-    order_size = 0.01
+    liq_behind_exit = 0.3
+    liq_behind_entry = BipolarContainer(Decimal(0.6), Decimal(0.6))
+    order_size = 0.02
 
 
 def calc_price(quote, liq_behind):
@@ -35,8 +35,8 @@ def exit_price(enter_side, enter_price, opposite_quote_price):
         enter_price,
         enter_side, Decimal(str(0.1)))
 
-    if (opposite_quote_price - min_acceptable_price) / abs(opposite_quote_price - min_acceptable_price) \
-            != Side.sign(enter_side):
+    delta = opposite_quote_price - min_acceptable_price
+    if delta != 0 and delta / abs(delta) != Side.sign(enter_side):
         opposite_quote_price = min_acceptable_price
     return opposite_quote_price
 
@@ -62,7 +62,10 @@ class Marketmaker:
 
     def exit_market(self):
         print("placing exit order")
-        Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
+        #Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
+        for side in Side.sides:
+            self.engine.execution.cancel(0, side)
+
         exit_side = Side.opposite_side(self.engine.pnl.position())
         quote_price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
         eprice = exit_price(self.engine.pnl.last_traded_side(), self.engine.pnl.last_traded_price(), quote_price)
@@ -70,7 +73,7 @@ class Marketmaker:
         self.engine.execution.request(1, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
-        if self.engine.pnl.position() == 0:
+        if self.engine.pnl.abs_position() < Decimal(str(0.01)):
             self.enter_market()
         else:
             self.exit_market()

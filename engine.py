@@ -17,6 +17,7 @@ class Engine:
         self.book.quote_subscribers.append(self.pnl)
         self.execution = Broker(self.order_manager)
         self.algo = algo_class(self)
+        self.execution_sink = []
     
     def on_md(self, md):
         # update book
@@ -91,6 +92,10 @@ class Engine:
                           order.price)
                 print('remains ' + str(Decimal(str(parsed['data']['remains'])) / 100000000))
                 side, delta, price = self.order_manager.on_execution(tx)
+                if delta != 0:
+                    self.execution_sink.append({"time": '00:00', 'order_id': order_id,
+                                                'side': side, 'price': str(price), 'size': str(delta)})
+
                 self.pnl.execution(side, delta, price)
                 #self.on_exec(tx)
                 print("Balance " + str(self.pnl.balance()))
@@ -100,7 +105,7 @@ class Engine:
                 print('###########')
             else:
                 print('wtf, unknown order id')
-                self.execution.rm.set_cancel_all()
+                # self.execution.rm.set_cancel_all()
 
         # omg what a hack
         # elif event == "tx" and 'symbol2' in parsed['data']:
