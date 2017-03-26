@@ -18,7 +18,8 @@ class Engine:
         self.execution = Broker(self.order_manager)
         self.algo = algo_class(self)
         self.execution_sink = []
-    
+        self.snapid = -1
+
     def on_md(self, md):
         # update book
         def update_side(side, side_name):
@@ -27,6 +28,13 @@ class Engine:
 
         update_side(Side.BID, 'bids')
         update_side(Side.ASK, 'asks')
+
+        nextsnap = int(md['data']['id'])
+        if self.snapid != -1 and nextsnap - self.snapid > 1:
+            print("GAP! "+str(nextsnap - self.snapid))
+            self.execution.rm.exit_only()
+
+        self.snapid = nextsnap
 
         if self.book.is_valid():
             # try:

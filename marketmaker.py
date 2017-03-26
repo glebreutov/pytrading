@@ -11,7 +11,7 @@ class MMParams:
     min_levels = 5
     liq_behind_exit = 0.3
     liq_behind_entry = BipolarContainer(Decimal(0.6), Decimal(0.6))
-    order_size = 0.02
+    order_size = 0.03
 
 
 def calc_price(quote, liq_behind):
@@ -73,7 +73,7 @@ class Marketmaker:
         self.engine.execution.request(1, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
-        if self.engine.pnl.abs_position() < Decimal(str(0.01)):
+        if not self.engine.execution.rm.exit_only() and self.engine.pnl.abs_position() < Decimal(str(0.01)):
             self.enter_market()
         else:
             self.exit_market()
