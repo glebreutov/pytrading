@@ -37,7 +37,8 @@ class PNL:
         self.pnl.side(quote.side).quote_price = quote.price
 
     def balance(self):
-        return self.abs_position() * self.pnl.side(Side.opposite_side(self.position())).quote_price
+        #return self.abs_position() * self.pnl.side(Side.opposite_side(self.position())).quote_price
+        return self.gain
 
     def last_traded_price(self):
         return max(self.pnl.ask().last_price, self.pnl.bid().last_price)

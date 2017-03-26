@@ -32,7 +32,7 @@ class Engine:
         nextsnap = int(md['data']['id'])
         if self.snapid != -1 and nextsnap - self.snapid > 1:
             print("GAP! "+str(nextsnap - self.snapid))
-            self.execution.rm.exit_only()
+            self.execution.rm.set_exit_only()
 
         self.snapid = nextsnap
 

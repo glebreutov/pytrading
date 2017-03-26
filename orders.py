@@ -176,9 +176,11 @@ class RiskManager:
     def trading_allowed(self):
         return self.status == RiskManager.NORMAL
 
-    def exit_only(self):
+    def set_exit_only(self):
         self.status = RiskManager.EXIT_ONLY
 
+    def exit_only(self):
+        return self.status == RiskManager.EXIT_ONLY
 
 class Broker:
     def __init__(self, om: OrderManager):
