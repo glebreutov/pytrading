@@ -74,7 +74,6 @@ async def tick(websocket, data):
         sreq = serialize_request(req)
         logging.info("{\"out\":" + sreq + "}")
         await websocket.send(sreq)
-        print(sreq)
 
     # if req_count > 0:
     #     await websocket.send(open_orders())

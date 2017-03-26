@@ -3,6 +3,8 @@ from decimal import Decimal
 
 import decimal
 
+import time
+
 from mm.book import Book, Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec
 from mm.pnl import PNL
@@ -98,19 +100,16 @@ class Engine:
                           order.side,
                           order_id,
                           order.price)
-                print('remains ' + str(Decimal(str(parsed['data']['remains'])) / 100000000))
+
                 side, delta, price = self.order_manager.on_execution(tx)
                 if delta != 0:
-                    self.execution_sink.append({"time": '00:00', 'order_id': order_id,
+                    exec_time = time.strftime("%H:%M:%S", time.localtime())
+                    self.execution_sink.append({"time": exec_time, 'order_id': order_id,
                                                 'side': side, 'price': str(price), 'size': str(delta)})
 
                 self.pnl.execution(side, delta, price)
                 #self.on_exec(tx)
-                print("Balance " + str(self.pnl.balance()))
-                print("Position " + str(self.pnl.position()))
-                print("last traded price " + str(self.pnl.last_traded_price()))
-                print("last traded side " + str(self.pnl.last_traded_side()))
-                print('###########')
+
             else:
                 print('wtf, unknown order id')
                 # self.execution.rm.set_cancel_all()

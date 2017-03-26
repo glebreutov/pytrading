@@ -19,7 +19,6 @@ class PNL:
         self.gain = 0
 
     def execution(self, side, delta, price):
-        print([side, delta, price])
         if delta > 0:
             side_pnl = self.pnl.side(side)
             side_pnl.position += abs(delta)

@@ -9,9 +9,11 @@ import pnl
 
 class MMParams:
     min_levels = 5
-    liq_behind_exit = 0.3
-    liq_behind_entry = BipolarContainer(Decimal(0.6), Decimal(0.6))
-    order_size = 0.03
+    liq_behind_exit = 0.1
+    liq_behind_entry = BipolarContainer(Decimal(0.3), Decimal(0.3))
+    order_sizes = BipolarContainer(Decimal(0.04), Decimal(0.09))
+    #order_size = 0.03
+    min_profit = Decimal(str(0.01))
 
 
 def calc_price(quote, liq_behind):
@@ -33,7 +35,7 @@ def specific_margin_price(entry_price, entry_side, margin, entry_commisiion=0, e
 def exit_price(enter_side, enter_price, opposite_quote_price):
     min_acceptable_price = specific_margin_price(
         enter_price,
-        enter_side, Decimal(str(0.1)))
+        enter_side, MMParams.min_profit)
 
     delta = opposite_quote_price - min_acceptable_price
     if delta != 0 and delta / abs(delta) != Side.sign(enter_side):
@@ -58,7 +60,7 @@ class Marketmaker:
                             tag=0,
                             side=side,
                             price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry.side(side)),
-                            size=str(MMParams.order_size))
+                            size=str(MMParams.order_sizes.side(side)))
 
     def exit_market(self):
         print("placing exit order")
