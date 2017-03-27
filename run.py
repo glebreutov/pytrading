@@ -3,7 +3,7 @@ import datetime
 import json
 
 import logging
-
+import sys
 import atexit
 import websockets
 import time
@@ -23,18 +23,19 @@ class Config:
     secret = None
 
 
-def logname():
-    return 'logs/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
+def logname(dirname: str):
+    return dirname+'/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
 
+config_file = 'config.json' if len(sys.argv) < 2 else sys.argv[1]
 
-with open('config_prod.json', 'r') as f:
+with open(config_file, 'r') as f:
     load = json.load(f)
-    Config.url = load['url']
-    Config.key = load['key']
-    Config.secret = load['secret']
+    Config.url = load['venue']['url']
+    Config.key = load['venue']['key']
+    Config.secret = load['venue']['secret']
+    logging.basicConfig(filename=logname(load['logging']['dir']), level=logging.INFO)
 
-logging.basicConfig(filename=logname(),level=logging.INFO)
-engine = Engine(Marketmaker)
+engine = Engine(Marketmaker, load['marketmaker'])
 
 async def reconnect():
     try:
@@ -107,8 +108,12 @@ def consumer(msg):
 
 async def sender():
     await asyncio.sleep(1)
+    execution_count = len(engine.execution_sink)
+    execs = serialize_execs(engine.execution_sink)
+    if execution_count > 0:
+        logging.info(execs)
     return [serialize_book(engine.book), serialize_orders(engine.order_manager),
-            serialize_pnl(engine.pnl), serialize_execs(engine.execution_sink)]
+            serialize_pnl(engine.pnl), execs]
 
 
 async def handler(websocket, path):

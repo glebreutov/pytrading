@@ -12,13 +12,13 @@ from mm.printout import print_book_and_orders
 
 
 class Engine:
-    def __init__(self, algo_class):
+    def __init__(self, algo_class, algo_config):
         self.order_manager = OrderManager()
         self.book = Book()
         self.pnl = PNL()
         self.book.quote_subscribers.append(self.pnl)
         self.execution = Broker(self.order_manager)
-        self.algo = algo_class(self)
+        self.algo = algo_class(self, algo_config)
         self.execution_sink = []
         self.snapid = -1
 

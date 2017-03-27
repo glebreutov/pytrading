@@ -6,12 +6,15 @@ from mm.book import BipolarContainer
 
 
 class MMParams:
-    min_levels = 5
-    liq_behind_exit = 0.02
-    liq_behind_entry = BipolarContainer(Decimal(0.5), Decimal(0.5))
-    order_sizes = BipolarContainer(Decimal('0.04'), Decimal('0.04'))
-    #order_size = 0.03
-    min_profit = Decimal(str(0.01))
+    def __init__(self, config):
+        self.min_levels = Decimal(config['min_levels'])
+        self.liq_behind_exit = Decimal(config['liq_behind_exit'])
+        self.liq_behind_entry = BipolarContainer(Decimal(config['liq_behind_entry']['BID']),
+                                            Decimal(config['liq_behind_entry']['ASK']))
+        self.order_sizes = BipolarContainer(Decimal(config['order_sizes']['BID']),
+                                       Decimal(config['order_sizes']['ASK']))
+        self.min_profit = Decimal(config['min_profit'])
+        self.min_order_size = Decimal(config['min_order_size'])
 
 
 def calc_price(quote, liq_behind):
@@ -30,10 +33,10 @@ def specific_margin_price(entry_price, entry_side, margin, entry_commisiion=0, e
            - Side.sign(entry_side) * exit_commision
 
 
-def exit_price(enter_side, enter_price, opposite_quote_price):
+def exit_price(enter_side, enter_price, opposite_quote_price, min_profit):
     min_acceptable_price = specific_margin_price(
         enter_price,
-        enter_side, MMParams.min_profit)
+        enter_side, min_profit)
 
     delta = opposite_quote_price - min_acceptable_price
     if delta != 0 and delta / abs(delta) != Side.sign(enter_side):
@@ -45,8 +48,9 @@ class Marketmaker:
     ENTER_TAG = 0
     EXIT_TAG = 1
 
-    def __init__(self, engine):
+    def __init__(self, engine, config):
         self.engine = engine
+        self.config = MMParams(config)
         engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
@@ -57,14 +61,14 @@ class Marketmaker:
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
 
-        if min(bid_quote.volume(), ask_quote.volume()) >= MMParams.liq_behind_entry.bid() \
-            and min(bid_quote.levels(), ask_quote.levels()) > MMParams.min_levels:
+        if min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind_entry.bid() \
+            and min(bid_quote.levels(), ask_quote.levels()) > self.config.min_levels:
             for side in Side.sides:
                     self.engine.execution.request(
                             tag=Marketmaker.ENTER_TAG,
                             side=side,
-                            price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry.side(side)),
-                            size=str(MMParams.order_sizes.side(side)))
+                            price=calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side)),
+                            size=str(self.config.order_sizes.side(side)))
 
     def exit_market(self):
         print("placing exit order")
@@ -73,13 +77,16 @@ class Marketmaker:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
         exit_side = Side.opposite_side(self.engine.pnl.position())
-        quote_price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
-        eprice = exit_price(self.engine.pnl.last_traded_side(), self.engine.pnl.last_traded_price(), quote_price)
+        quote_price = calc_price(self.engine.book.quote(exit_side), self.config.liq_behind_exit)
+        eprice = exit_price(self.engine.pnl.last_traded_side(),
+                            self.engine.pnl.last_traded_price(),
+                            quote_price,
+                            self.config.min_profit)
 
         self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
-        if not self.engine.execution.rm.exit_only() and self.engine.pnl.abs_position() < Decimal(str(0.01)):
+        if not self.engine.execution.rm.exit_only() and self.engine.pnl.abs_position() < self.config.min_order_size:
             self.enter_market()
         else:
             self.exit_market()
