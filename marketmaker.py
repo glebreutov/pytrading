@@ -10,7 +10,7 @@ class MMParams:
     min_levels = 5
     liq_behind_exit = 0.1
     liq_behind_entry = BipolarContainer(Decimal(0.3), Decimal(0.3))
-    order_sizes = BipolarContainer(Decimal('0.06'), Decimal('0.06'))
+    order_sizes = BipolarContainer(Decimal('0.04'), Decimal('0.04'))
     #order_size = 0.03
     min_profit = Decimal(str(0.01))
 

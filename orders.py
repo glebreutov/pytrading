@@ -182,6 +182,7 @@ class RiskManager:
     def exit_only(self):
         return self.status == RiskManager.EXIT_ONLY
 
+
 class Broker:
     def __init__(self, om: OrderManager):
         self.om = om
@@ -195,14 +196,15 @@ class Broker:
             return
 
         def can_replace():
-            return tag in orders_side and orders_side[tag].status == OrderStatus.ACK
+            order = orders_side[tag]
+            return tag in orders_side and order.status == OrderStatus.ACK \
+                   and (price != order.price or size != order.amount)
 
         def can_new():
             return tag not in orders_side or orders_side[tag].status == OrderStatus.COMPLETED
 
         if can_replace():
-            order_id = orders_side[tag].order_id
-            self.om.replace_req(order_id, side, price, size)
+            self.om.replace_req(orders_side[tag].order_id, side, price, size)
             pass
         elif can_new():
             orders_side[tag] = self.om.new_req(side, price, size)

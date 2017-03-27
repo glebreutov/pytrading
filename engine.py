@@ -56,7 +56,7 @@ class Engine:
 
     def order_event(self, event, parsed):
         ok = True
-        if 'ok' in parsed and parsed['ok'] != 'ok':
+        if 'ok' in parsed and parsed['ok'] != 'ok' or 'error' in parsed['data']:
             print('Order error')
             print(parsed)
             ok = False
