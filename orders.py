@@ -196,9 +196,8 @@ class Broker:
             return
 
         def can_replace():
-            order = orders_side[tag]
-            return tag in orders_side and order.status == OrderStatus.ACK \
-                   and (price != order.price or size != order.amount)
+            return tag in orders_side and orders_side[tag].status == OrderStatus.ACK \
+                   and (price != orders_side[tag].price or size != orders_side[tag].amount)
 
         def can_new():
             return tag not in orders_side or orders_side[tag].status == OrderStatus.COMPLETED

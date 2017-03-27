@@ -85,7 +85,7 @@ class Engine:
             self.order_manager.on_cancel(canc)
             # cancelled
         elif event in ["cancel-replace-order", "cancel-order"] and not ok:
-            if parsed['data']['error'] == 'Error: Order not found':
+            if parsed['data']['error'] == 'Error: Order not found' and parsed['oid'] in self.order_manager.by_oid:
                 self.order_manager.remove_order(parsed['oid'])
             else:
                 self.execution.rm.set_cancel_all()

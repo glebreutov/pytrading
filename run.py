@@ -80,12 +80,16 @@ async def tick(websocket, data):
 
     q = engine.order_manager.request_queue
     req_count = len(q)
+    # send_counter = []
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
         sreq = serialize_request(req)
         logging.info("{\"out\":" + sreq + "}")
         await websocket.send(sreq)
+        # send_counter.append(time.time())
 
+    # send_counter = [x for x in send_counter if time.time() - x > 600]
+    # print(str(len(send_counter)) + " messages per 10 min")
     # if req_count > 0:
     #     await websocket.send(open_orders())
 

@@ -5,11 +5,10 @@ from decimal import Decimal
 from mm.book import BipolarContainer
 
 
-
 class MMParams:
     min_levels = 5
-    liq_behind_exit = 0.1
-    liq_behind_entry = BipolarContainer(Decimal(0.3), Decimal(0.3))
+    liq_behind_exit = 0.02
+    liq_behind_entry = BipolarContainer(Decimal(0.5), Decimal(0.5))
     order_sizes = BipolarContainer(Decimal('0.04'), Decimal('0.04'))
     #order_size = 0.03
     min_profit = Decimal(str(0.01))
@@ -43,6 +42,8 @@ def exit_price(enter_side, enter_price, opposite_quote_price):
 
 
 class Marketmaker:
+    ENTER_TAG = 0
+    EXIT_TAG = 1
 
     def __init__(self, engine):
         self.engine = engine
@@ -52,11 +53,15 @@ class Marketmaker:
 
         bid_quote = self.engine.book.quote(Side.BID)
         ask_quote = self.engine.book.quote(Side.ASK)
+
+        for side in Side.sides:
+            self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
+
         if min(bid_quote.volume(), ask_quote.volume()) >= MMParams.liq_behind_entry.bid() \
             and min(bid_quote.levels(), ask_quote.levels()) > MMParams.min_levels:
             for side in Side.sides:
                     self.engine.execution.request(
-                            tag=0,
+                            tag=Marketmaker.ENTER_TAG,
                             side=side,
                             price=calc_price(self.engine.book.quote(side), MMParams.liq_behind_entry.side(side)),
                             size=str(MMParams.order_sizes.side(side)))
@@ -65,13 +70,13 @@ class Marketmaker:
         print("placing exit order")
         #Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
         for side in Side.sides:
-            self.engine.execution.cancel(0, side)
+            self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
         exit_side = Side.opposite_side(self.engine.pnl.position())
         quote_price = calc_price(self.engine.book.quote(exit_side), MMParams.liq_behind_exit)
         eprice = exit_price(self.engine.pnl.last_traded_side(), self.engine.pnl.last_traded_price(), quote_price)
 
-        self.engine.execution.request(1, exit_side, eprice, str(self.engine.pnl.abs_position()))
+        self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
         if not self.engine.execution.rm.exit_only() and self.engine.pnl.abs_position() < Decimal(str(0.01)):
