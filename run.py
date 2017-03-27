@@ -7,11 +7,14 @@ import logging
 import atexit
 import websockets
 import time
+
+from websockets import ConnectionClosed
+from websockets import InvalidHandshake
+
 from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
-from mm.test_algo import TestReplace, TestCancel, TestExec
 
 
 class Config:
@@ -32,6 +35,14 @@ with open('config_prod.json', 'r') as f:
 
 logging.basicConfig(filename=logname(),level=logging.INFO)
 engine = Engine(Marketmaker)
+
+async def reconnect():
+    try:
+        await hello()
+    except (ConnectionClosed, InvalidHandshake):
+        print("reconnecting...")
+        await asyncio.sleep(1)
+        await reconnect()
 
 async def hello():
     async with websockets.connect(Config.url) as websocket:
@@ -119,17 +130,15 @@ async def handler(websocket, path):
             producer_task.cancel()
 
 
-start_server = websockets.serve(handler, 'localhost', 5678)
+start_server = websockets.serve(handler, '0.0.0.0', 5678)
 
 
 loop = asyncio.get_event_loop()
 
-# {'e': 'tx', 'data': {'d': 'user:up104309133:a:BTC', 'c': 'order:3757803898:a:BTC', 'a': '0.01000000', 'ds': '0.04312206', 'cs': '0.01000000', 'user': 'up104309133', 'symbol': 'BTC', 'order': 3757803898, 'amount': '-0.01000000', 'type': 'sell', 'time': '2017-03-14T11:36:47.149Z', 'balance': '0.04312206', 'id': '3757803899'}}
-
 
 loop.run_until_complete(asyncio.gather(
     start_server,
-    hello(),
+    reconnect(),
 ))
 loop.run_forever()
 

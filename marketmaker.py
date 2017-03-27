@@ -1,17 +1,16 @@
-from book import Book
-from book import Side
+from mm.book import Book
+from mm.book import Side
 from decimal import Decimal
 
 from mm.book import BipolarContainer
-from mm.orders import Broker
-import pnl
+
 
 
 class MMParams:
     min_levels = 5
     liq_behind_exit = 0.1
     liq_behind_entry = BipolarContainer(Decimal(0.3), Decimal(0.3))
-    order_sizes = BipolarContainer(Decimal(0.04), Decimal(0.09))
+    order_sizes = BipolarContainer(Decimal('0.06'), Decimal('0.06'))
     #order_size = 0.03
     min_profit = Decimal(str(0.01))
 
