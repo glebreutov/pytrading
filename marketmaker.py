@@ -3,6 +3,7 @@ from mm.book import Side
 from decimal import Decimal
 
 from mm.book import BipolarContainer
+from mm.orders import RiskManager
 
 
 class MMParams:
@@ -10,9 +11,9 @@ class MMParams:
         self.min_levels = Decimal(config['min_levels'])
         self.liq_behind_exit = Decimal(config['liq_behind_exit'])
         self.liq_behind_entry = BipolarContainer(Decimal(config['liq_behind_entry']['BID']),
-                                            Decimal(config['liq_behind_entry']['ASK']))
+                                                 Decimal(config['liq_behind_entry']['ASK']))
         self.order_sizes = BipolarContainer(Decimal(config['order_sizes']['BID']),
-                                       Decimal(config['order_sizes']['ASK']))
+                                            Decimal(config['order_sizes']['ASK']))
         self.min_profit = Decimal(config['min_profit'])
         self.min_order_size = Decimal(config['min_order_size'])
 
@@ -86,10 +87,16 @@ class Marketmaker:
         self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
-        if not self.engine.execution.rm.exit_only() and self.engine.pnl.abs_position() < self.config.min_order_size:
-            self.enter_market()
-        else:
+        risk_status = self.engine.execution.rm.status
+        if risk_status == RiskManager.CANCEL_ALL:
+            self.engine.execution.cancel_all()
+        elif risk_status == RiskManager.EXIT_ONLY:
             self.exit_market()
+        elif risk_status == RiskManager.NORMAL:
+            if self.engine.pnl.abs_position() < self.config.min_order_size:
+                self.enter_market()
+            else:
+                self.exit_market()
 
     def quote_changed(self, side):
         self.tick()

@@ -191,9 +191,6 @@ class Broker:
 
     def request(self, tag, side, price, size):
         orders_side = self.orders.side(side)
-        if not self.rm.trading_allowed():
-            self.cancel_all()
-            return
 
         def can_replace():
             return tag in orders_side and orders_side[tag].status == OrderStatus.ACK \

@@ -88,7 +88,7 @@ class Engine:
             if parsed['data']['error'] == 'Error: Order not found' and parsed['oid'] in self.order_manager.by_oid:
                 self.order_manager.remove_order(parsed['oid'])
             else:
-                self.execution.rm.set_cancel_all()
+                self.execution.rm.set_exit_only()
                 print('error occures on replace cancelling orders')
 
         elif event == "order":
@@ -106,9 +106,8 @@ class Engine:
                     exec_time = time.strftime("%H:%M:%S", time.localtime())
                     self.execution_sink.append({"time": exec_time, 'order_id': order_id,
                                                 'side': side, 'price': str(price), 'size': str(delta)})
-
-                self.pnl.execution(side, delta, price)
-                #self.on_exec(tx)
+                    self.pnl.execution(side, delta, price)
+                    self.on_exec(tx)
 
             else:
                 print('wtf, unknown order id')
