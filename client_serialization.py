@@ -28,7 +28,7 @@ def serialize_pnl(pnl: PNL):
     return json.dumps({"e": "pnl", "details": {'position': str(pnl.position()),
                        'balance': str(pnl.balance()),
                        'last traded price': str(pnl.last_traded_price()),
-                       'closed PNL': pnl.closed_pnl}})
+                       'closed PNL': str(pnl.closed_pnl)}})
 
 
 def serialize_execs(execs):
