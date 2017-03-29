@@ -35,6 +35,20 @@ class Side:
     def parseSide(cls, str):
         return Side.BID if str == 'buy' else Side.ASK
 
+    @classmethod
+    def closer_to_quote(cls, side, price1, price2):
+        if price1 - price2 == 0:
+            return price1
+
+        delta = (price1 - price2) / abs(price1 - price2)
+
+        if delta == Side.sign(side):
+            return price1
+        elif delta == Side.sign(Side.opposite(side)):
+            return price2
+        else:
+            raise RuntimeError
+
 
 class BipolarContainer:
     def __init__(self, bid=None, ask=None):

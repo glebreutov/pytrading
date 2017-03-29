@@ -28,6 +28,10 @@ def calc_price(quote, liq_behind):
     return quote.price
 
 
+def should_update_price(side, current_price: Decimal, new_price: Decimal, barrier: Decimal):
+    return current_price - new_price > barrier or Side.closer_to_quote(side, current_price, new_price) == new_price
+
+
 def specific_margin_price(entry_price, entry_side, margin, entry_commisiion=0, exit_commision=0):
     return entry_price \
            + Side.sign(entry_side) * (margin + entry_commisiion) \
@@ -55,25 +59,25 @@ class Marketmaker:
         engine.book.quote_subscribers.append(self)
 
     def enter_market(self):
-
-        bid_quote = self.engine.book.quote(Side.BID)
-        ask_quote = self.engine.book.quote(Side.ASK)
+        def can_enter():
+            bid_quote = self.engine.book.quote(Side.BID)
+            ask_quote = self.engine.book.quote(Side.ASK)
+            return min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind_entry.bid() \
+                and min(bid_quote.levels(), ask_quote.levels()) > self.config.min_levels
 
         for side in Side.sides:
-            self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
-
-        if min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind_entry.bid() \
-            and min(bid_quote.levels(), ask_quote.levels()) > self.config.min_levels:
-            for side in Side.sides:
-                    self.engine.execution.request(
-                            tag=Marketmaker.ENTER_TAG,
-                            side=side,
-                            price=calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side)),
-                            size=str(self.config.order_sizes.side(side)))
+            if can_enter():
+                self.engine.execution.request(
+                        tag=Marketmaker.ENTER_TAG,
+                        side=side,
+                        price=calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side)),
+                        size=str(self.config.order_sizes.side(side)))
+                self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
+            else:
+                self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
     def exit_market(self):
         print("placing exit order")
-        #Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
 
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
@@ -87,6 +91,7 @@ class Marketmaker:
                             self.config.min_profit)
         if self.engine.pnl.abs_position() >= self.config.min_order_size:
             self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
+            self.engine.pnl.update_open_pnl(eprice)
 
     def tick(self):
         risk_status = self.engine.execution.rm.status
