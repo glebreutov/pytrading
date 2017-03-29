@@ -194,6 +194,9 @@ class Book:
     def is_valid(self):
         return self.quote(Side.BID) is not None and self.quote(Side.ASK) is not None
 
+    def clear(self):
+        self.book = BipolarContainer()
+
 
 
 

@@ -6,7 +6,7 @@ import decimal
 import time
 
 from mm.book import Book, Side
-from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec
+from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus
 from mm.pnl import PNL
 from mm.printout import print_book_and_orders
 
@@ -34,6 +34,7 @@ class Engine:
         nextsnap = int(md['data']['id'])
         if self.snapid != -1 and nextsnap - self.snapid > 1:
             print("GAP! "+str(nextsnap - self.snapid))
+            self.book.clear()
             self.execution.rm.set_exit_only()
 
         self.snapid = nextsnap
@@ -89,6 +90,8 @@ class Engine:
                 self.order_manager.remove_order(parsed['oid'])
             else:
                 self.execution.rm.set_exit_only()
+                if parsed['oid'] in self.order_manager.by_oid:
+                    self.order_manager.by_oid[parsed['oid']].status = OrderStatus.ACK
                 print('error occures on replace cancelling orders')
 
         elif event == "order":

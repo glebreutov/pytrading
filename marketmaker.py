@@ -74,17 +74,19 @@ class Marketmaker:
     def exit_market(self):
         print("placing exit order")
         #Side.apply_sides(lambda side: self.engine.broker.cancel(0, side))
+
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
         exit_side = Side.opposite_side(self.engine.pnl.position())
         quote_price = calc_price(self.engine.book.quote(exit_side), self.config.liq_behind_exit)
+
         eprice = exit_price(self.engine.pnl.last_traded_side(),
                             self.engine.pnl.last_traded_price(),
                             quote_price,
                             self.config.min_profit)
-
-        self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
+        if self.engine.pnl.abs_position() >= self.config.min_order_size:
+            self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
 
     def tick(self):
         risk_status = self.engine.execution.rm.status
