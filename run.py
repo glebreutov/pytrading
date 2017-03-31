@@ -11,8 +11,10 @@ import time
 from websockets import ConnectionClosed
 from websockets import InvalidHandshake
 
+from mm.event_hub import ImportantLogger
 from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
-from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs
+from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
+    serialize_important_events
 from mm.engine import Engine
 from mm.marketmaker import Marketmaker
 
@@ -33,9 +35,12 @@ with open(config_file, 'r') as f:
     Config.url = load['venue']['url']
     Config.key = load['venue']['key']
     Config.secret = load['venue']['secret']
-    logging.basicConfig(filename=logname(load['logging']['dir']), level=logging.INFO)
+    logging.basicConfig(filename=logname(load['logging']['dir']), level=load['logging']['level'])
 
 engine = Engine(Marketmaker, load['marketmaker'])
+
+engine.event_hub.subscribe(ImportantLogger(load['logging']['dir']))
+
 
 async def reconnect():
     try:
@@ -43,6 +48,7 @@ async def reconnect():
     except (ConnectionClosed, InvalidHandshake):
         print("reconnecting...")
         await asyncio.sleep(1)
+        engine.event_hub.reconnect()
         await reconnect()
 
 async def hello():
@@ -64,7 +70,6 @@ async def hello():
 
 async def tick(websocket, data):
     parsed = json.loads(data)
-
     event = parsed['e']
     if event == 'md_update':
         engine.on_md(parsed)
@@ -77,7 +82,7 @@ async def tick(websocket, data):
         print('!open orders ' + str(len(parsed['data'])))
     else:
         logging.info("{\"in\":" + data + "}")
-        print(parsed)
+        #print(parsed)
 
     q = engine.order_manager.request_queue
     req_count = len(q)
@@ -113,7 +118,7 @@ async def sender():
     if execution_count > 0:
         logging.info(execs)
     return [serialize_book(engine.book), serialize_orders(engine.order_manager),
-            serialize_pnl(engine.pnl), execs]
+            serialize_pnl(engine.pnl), execs, serialize_important_events(engine.event_log)]
 
 
 async def handler(websocket, path):

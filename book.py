@@ -1,5 +1,7 @@
 from functools import reduce
 
+from mm.event_hub import ImportantEvent
+
 
 class Side:
     BID = 'B'
@@ -210,6 +212,10 @@ class Book:
 
     def clear(self):
         self.book = BipolarContainer()
+
+    def important_event(self, ev: ImportantEvent):
+        if ev.event_name == ImportantEvent.GAP:
+            self.clear()
 
 
 

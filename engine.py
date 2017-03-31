@@ -5,6 +5,8 @@ import decimal
 
 import time
 
+from mm.client import ClientEventHandler
+from mm.event_hub import EventHub
 from mm.book import Book, Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus
 from mm.pnl import PNL
@@ -13,6 +15,7 @@ from mm.printout import print_book_and_orders
 
 class Engine:
     def __init__(self, algo_class, algo_config):
+        self.event_log = ClientEventHandler()
         self.order_manager = OrderManager()
         self.book = Book()
         self.pnl = PNL()
@@ -21,6 +24,11 @@ class Engine:
         self.algo = algo_class(self, algo_config)
         self.execution_sink = []
         self.snapid = -1
+        self.event_hub = EventHub()
+        self.event_hub.subscribe(self.book)
+        self.event_hub.subscribe(self.algo)
+        self.event_hub.subscribe(self.event_log)
+        self.event_hub.subscribe(self.order_manager)
 
     def on_md(self, md):
         # update book
@@ -34,8 +42,9 @@ class Engine:
         nextsnap = int(md['data']['id'])
         if self.snapid != -1 and nextsnap - self.snapid > 1:
             print("GAP! "+str(nextsnap - self.snapid))
-            self.book.clear()
-            self.execution.rm.set_exit_only()
+            self.event_hub.gap(nextsnap - self.snapid)
+            #self.book.clear()
+            #self.execution.rm.set_exit_only()
 
         self.snapid = nextsnap
 
@@ -60,6 +69,7 @@ class Engine:
         if 'ok' in parsed and parsed['ok'] != 'ok' or 'error' in parsed['data']:
             print('Order error')
             print(parsed)
+            self.event_hub.order_error(parsed['data']['error'])
             ok = False
 
         if event == "place-order" and ok:

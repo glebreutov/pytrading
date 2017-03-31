@@ -3,6 +3,7 @@ import uuid
 from _decimal import Decimal
 from enum import Enum
 
+from mm.event_hub import EventHub, ImportantEvent
 from mm.book import BipolarContainer, Side
 
 
@@ -155,6 +156,12 @@ class OrderManager:
         order.status = OrderStatus.COMPLETED
         if order.order_id in self.by_order_id:
             del self.by_order_id[order.order_id]
+
+    def important_event(self, ev: ImportantEvent):
+        if ev.event_name == ImportantEvent.RECONNECT:
+            for oid, order in self.by_oid.items():
+                if order.status == OrderStatus.REQ_SENT:
+                    order.status = OrderStatus.ACK
 
 
 class RiskManager:

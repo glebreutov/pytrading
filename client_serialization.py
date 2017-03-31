@@ -1,5 +1,6 @@
 import json
 
+from mm.client import ClientEventHandler
 from mm.book import Book, BipolarContainer, Side
 from mm.orders import OrderManager, OrderStatus
 from mm.pnl import PNL
@@ -29,10 +30,16 @@ def serialize_pnl(pnl: PNL):
                        'balance': str(pnl.balance()),
                        'last traded price': str(pnl.last_traded_price()),
                        'closed PNL': str(pnl.closed_pnl),
-                       'open PNL': pnl.open_pnl()}})
+                       'open PNL': str(pnl.open_pnl())}})
 
 
 def serialize_execs(execs):
     serialized = json.dumps({"e": "exec", "details": execs})
     execs.clear()
     return serialized
+
+
+def serialize_important_events(ev_handler: ClientEventHandler):
+    data = ev_handler.event_stack
+    ev_handler.event_stack.clear()
+    return json.dumps({"e": "important_events", "details": data})
