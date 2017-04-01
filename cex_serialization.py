@@ -19,16 +19,16 @@ def auth_request(key, secret):
                        'auth': {'key': key, 'signature': signature, 'timestamp': timestamp, }, 'oid': 'auth', })
 
 
-def subscribe_msg():
+def subscribe_msg(crypto="BTC", currency="USD"):
     return json.dumps({
         "e": "order-book-subscribe",
         "data": {
             "pair": [
-                "BTC",
-                "USD"
+                crypto,
+                currency
             ],
             "subscribe": True,
-            "depth": 5
+            "depth": 10
         },
         "oid": "1435927928274_3_order-book-subscribe"
     })
@@ -38,14 +38,14 @@ def serialize_side(side):
     return 'buy' if side == Side.BID else 'sell'
 
 
-def serialize_request(req):
+def serialize_request(req, crypto="BTC", currency="USD"):
     if type(req) == NewReq:
         return json.dumps({
             "e": "place-order",
             "data": {
                 "pair": [
-                    "BTC",
-                    "USD"
+                    crypto,
+                    currency
                 ],
                 "amount": req.size,
                 "price": str(req.price),
@@ -59,8 +59,8 @@ def serialize_request(req):
             "data": {
                 "order_id": req.order_id,
                 "pair": [
-                    "BTC",
-                    "USD"
+                    crypto,
+                    currency
                 ],
                 "amount": req.size,
                 "price": str(req.price),
@@ -80,13 +80,13 @@ def serialize_request(req):
         raise RuntimeError
 
 
-def open_orders():
+def open_orders(crypto="BTC", currency="USD"):
     return json.dumps({
         "e": "open-orders",
         "data": {
             "pair": [
-                "BTC",
-                "USD"
+                crypto,
+                currency
             ]
         },
         "oid": "1435927928274_6_open-orders"

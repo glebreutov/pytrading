@@ -18,10 +18,10 @@ class Engine:
         self.event_log = ClientEventHandler()
         self.order_manager = OrderManager()
         self.book = Book()
-        self.pnl = PNL()
+        self.pnl = PNL(algo_config['venue']['taker_comission_percent'])
         self.book.quote_subscribers.append(self.pnl)
         self.execution = Broker(self.order_manager)
-        self.algo = algo_class(self, algo_config)
+        self.algo = algo_class(self, algo_config['marketmaker'])
         self.execution_sink = []
         self.snapid = -1
         self.event_hub = EventHub()

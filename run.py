@@ -31,15 +31,15 @@ def logname(dirname: str):
 config_file = 'config.json' if len(sys.argv) < 2 else sys.argv[1]
 
 with open(config_file, 'r') as f:
-    load = json.load(f)
-    Config.url = load['venue']['url']
-    Config.key = load['venue']['key']
-    Config.secret = load['venue']['secret']
-    logging.basicConfig(filename=logname(load['logging']['dir']), level=load['logging']['level'])
+    config = json.load(f)
+    Config.url = config['venue']['url']
+    Config.key = config['venue']['key']
+    Config.secret = config['venue']['secret']
+    logging.basicConfig(filename=logname(config['logging']['dir']), level=config['logging']['level'])
 
-engine = Engine(Marketmaker, load['marketmaker'])
+engine = Engine(Marketmaker, config)
 
-engine.event_hub.subscribe(ImportantLogger(load['logging']['dir']))
+engine.event_hub.subscribe(ImportantLogger(config['logging']['dir']))
 
 
 async def reconnect():
@@ -62,7 +62,7 @@ async def hello():
         greeting = await websocket.recv()
         print(greeting)
 
-        await websocket.send(subscribe_msg())
+        await websocket.send(subscribe_msg(config['asset']['crypto'], config['asset']['currency']))
         while True:
             data = await websocket.recv()
             await tick(websocket, data)
@@ -89,7 +89,7 @@ async def tick(websocket, data):
     # send_counter = []
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
-        sreq = serialize_request(req)
+        sreq = serialize_request(req, config['asset']['crypto'], config['asset']['currency'])
         logging.info("{\"out\":" + sreq + "}")
         await websocket.send(sreq)
         # send_counter.append(time.time())
@@ -144,16 +144,18 @@ async def handler(websocket, path):
             producer_task.cancel()
 
 
-start_server = websockets.serve(handler, '0.0.0.0', 5678)
-
-
 loop = asyncio.get_event_loop()
 
-
-loop.run_until_complete(asyncio.gather(
-    start_server,
-    reconnect(),
-))
+if config['client']['enabled']:
+    start_server = websockets.serve(handler, '0.0.0.0', config['client']['port'])
+    loop.run_until_complete(asyncio.gather(
+        start_server,
+        reconnect(),
+    ))
+else:
+    loop.run_until_complete(asyncio.gather(
+        reconnect(),
+    ))
 loop.run_forever()
 
 

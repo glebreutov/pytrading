@@ -42,7 +42,8 @@ def specific_margin_price(entry_price, entry_side, margin, entry_commisiion=0, e
 def exit_price(enter_side, enter_price, opposite_quote_price, min_profit):
     min_acceptable_price = specific_margin_price(
         enter_price,
-        enter_side, min_profit)
+        enter_side,
+        min_profit)
 
     delta = opposite_quote_price - min_acceptable_price
     if delta != 0 and delta / abs(delta) != Side.sign(enter_side):
@@ -52,6 +53,14 @@ def exit_price(enter_side, enter_price, opposite_quote_price, min_profit):
 
 def tx_profit(op_quote, last_traded_price, exit_side, fee):
     return (op_quote - last_traded_price) * Side.sign(exit_side) - op_quote / 100 * fee
+
+
+def adjusted_size(order_size, order_side, pos):
+    pos_side = Side.side(pos)
+    if pos_side == order_side:
+        return order_size - abs(pos)
+    else:
+        return order_size + abs(pos)
 
 
 class Marketmaker:
@@ -74,11 +83,13 @@ class Marketmaker:
     def enter_market(self):
         for side in Side.sides:
             if self.book_is_valid():
+                size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
                 self.engine.execution.request(
                     tag=Marketmaker.ENTER_TAG,
                     side=side,
                     price=calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side)),
-                    size=str(self.config.order_sizes.side(side)))
+                    size=str(size)
+                )
                 self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
             else:
                 self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
@@ -88,13 +99,12 @@ class Marketmaker:
 
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
-        # todo: add quote is null check
         if self.book_is_valid():
             exit_side = Side.opposite_side(self.engine.pnl.position())
             quote_price = calc_price(self.engine.book.quote(exit_side), self.config.liq_behind_exit)
 
-            eprice = exit_price(self.engine.pnl.last_traded_side(),
-                                self.engine.pnl.last_traded_price(),
+            eprice = exit_price(self.engine.pnl.position_side(),
+                                self.engine.pnl.position_zero_price(),
                                 quote_price,
                                 self.config.min_profit)
             if self.engine.pnl.abs_position() >= self.config.min_order_size:
@@ -128,8 +138,19 @@ class Marketmaker:
 
 
 
+def test_adj_side():
+    assert adjusted_size(Decimal('0.07'), Side.BID, Decimal('0.00')) == Decimal('0.07')
+    assert adjusted_size(Decimal('0.07'), Side.ASK, Decimal('0.00')) == Decimal('0.07')
+
+    assert adjusted_size(Decimal('0.07'), Side.BID, Decimal('0.01')) == Decimal('0.06')
+    assert adjusted_size(Decimal('0.07'), Side.ASK, Decimal('0.01')) == Decimal('0.08')
+
+    assert adjusted_size(Decimal('0.07'), Side.BID, Decimal('-0.01')) == Decimal('0.08')
+    assert adjusted_size(Decimal('0.07'), Side.ASK, Decimal('-0.01')) == Decimal('0.06')
 
 
+
+test_adj_side()
         # print(exit_price(Side.BID, 100, 105))
         # print(exit_price(Side.ASK, 105, 100))
         #

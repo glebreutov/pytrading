@@ -28,9 +28,12 @@ def serialize_orders(om: OrderManager):
 def serialize_pnl(pnl: PNL):
     return json.dumps({"e": "pnl", "details": {'position': str(pnl.position()),
                        'balance': str(pnl.balance()),
-                       'last traded price': str(pnl.last_traded_price()),
+                       'zero exit price': str(pnl.position_zero_price()),
                        'closed PNL': str(pnl.closed_pnl),
-                       'open PNL': str(pnl.open_pnl())}})
+                       'open P&L': str(pnl.open_pnl()),
+                       'nbbo P&L': str(pnl.nbbo_pnl()),
+                       'take P&L': str(pnl.take_pnl())
+                                               }})
 
 
 def serialize_execs(execs):
