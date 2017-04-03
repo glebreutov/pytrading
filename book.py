@@ -18,6 +18,10 @@ class Side:
         return 1 if side == Side.BID else -1
 
     @classmethod
+    def opposite_sign(cls, side):
+        return Side.sign(side)*-1
+
+    @classmethod
     def apply_sides(cls, func):
         map(func, Side.sides)
 
@@ -32,10 +36,6 @@ class Side:
     @classmethod
     def opposite(cls, side):
         return Side.BID if side == Side.ASK else Side.ASK
-
-    @classmethod
-    def parseSide(cls, str):
-        return Side.BID if str == 'buy' else Side.ASK
 
     @classmethod
     def closer_to_quote(cls, side, price1, price2):
