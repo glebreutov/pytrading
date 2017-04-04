@@ -1,7 +1,9 @@
+import * as _ from 'lodash'
 import React from 'react'
 
 export default function Executions (props) {
-  const { executions } = props
+  let { executions } = props
+  executions = _.orderBy(executions, 'timestamp', 'desc')
   const fields = ['time', 'order_id', 'side', 'price', 'size']
   return <table className='order-table'>
     <tbody>

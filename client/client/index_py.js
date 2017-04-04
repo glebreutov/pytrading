@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import BookDisplay, {toLevel} from './BookDisplay'
 import Executions from './Executions'
+import Log from './Log'
 import KV from './KV'
 import Big from 'big.js/big'
 import * as _ from 'lodash'
@@ -10,11 +11,12 @@ const bookData = {
   bookLevels: [],
   myOrders: [],
 }
-
-const state = {
+const lsKey = '__state_v01'
+const state = localStorage.getItem(lsKey) ? JSON.parse(localStorage.getItem(lsKey)) : {
   error: null,
   connected: false,
   executions: [],
+  log: [],
   pnl: {},
 }
 const url = `ws://${window.location.hash.replace('#', '') || '127.0.0.1:5678'}`
@@ -31,9 +33,15 @@ socket.addEventListener('open', () => {
   state.error = null
   render()
 })
-socket.addEventListener('message', (event) => {
+socket.addEventListener('message', function processEvent (event) {
   console.log(event.data)
-  const msg = JSON.parse(event.data)
+  let msg
+  try {
+    msg = JSON.parse(event.data)
+  } catch (e) {
+    debugger;
+    return
+  }
   if (msg.e === 'book') {
     bookData.bookLevels = [].concat(
       msg.details['B'].map(wsBookToBookEntry('bid')),
@@ -47,10 +55,21 @@ socket.addEventListener('message', (event) => {
   }
   if (msg.e === 'pnl') {
     state.pnl = msg.details
+    document.title = (msg.details['closed PNL'] || '') + ' (╯°□°）╯︵ ┻━┻'
   }
   if (msg.e === 'exec') {
     state.executions = state.executions.concat(msg.details)
   }
+
+  if (msg.e === 'important_events') {
+    msg.details.forEach((t) => processEvent({data: t}))
+  }
+  if (msg.e === 'warning') {
+    // time, event, details
+    state.log = state.log.concat(msg)
+  }
+
+  localStorage.setItem(lsKey, JSON.stringify(state))
 })
 socket.addEventListener('error', (err) => {
   state.error = err
@@ -88,6 +107,7 @@ function render () {
         <BookDisplay {...bookData} showOnlySide='ask' />
         <BookDisplay {...bookData} showOnlySide='bid' reverse={true} />
         <Executions executions={state.executions} />
+        <Log entries={state.log} />
       </div>
     </div>,
     document.getElementById('app')
