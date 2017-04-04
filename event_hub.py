@@ -16,9 +16,11 @@ class ImportantEvent:
         self.details = details
 
     def __str__(self):
-        return json.dumps({"time": str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())),
+        return json.dumps({"e": "warning",
+                           "time": str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())),
                            "event": self.event_name,
-                           "details": str(self.details)})
+                           "details": str(self.details),
+                           'timestamp': int(1000*time.time())})
 
 
 class PrintLogger:

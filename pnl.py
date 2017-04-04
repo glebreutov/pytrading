@@ -8,7 +8,6 @@ from mm.orders import Exec
 class SidePnl:
     def __init__(self):
         self.position = Decimal(0)
-        self.pending = 0
         self.quote_price = 0
         self.last_price = 0
 

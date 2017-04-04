@@ -10,9 +10,26 @@ from printout import print_book_and_orders
 
 
 class Position:
-    def __init__(self, pos, cost):
-        self.balance = cost
-        self.pos = pos
+    def __init__(self, pos, cost=None, price=None, side=None):
+        if cost is None and price is None:
+            raise RuntimeError
+
+        if cost is not None and price is not None:
+            raise RuntimeError
+
+        if price is not None and side is None:
+            raise RuntimeError
+
+        if cost is not None:
+            if side is None:
+                self.balance = cost
+                self.pos = pos
+            else:
+                self.pos = abs(pos) * Side.sign(side)
+                self.balance = abs(cost) * Side.opposite_sign(side)
+        else:
+            self.pos = abs(pos) * Side.sign(side)
+            self.balance = Side.opposite_sign(side) * pos * price
 
     def position(self):
         return self.pos
@@ -32,24 +49,35 @@ class Position:
 
         return round(abs(self.balance / self.pos), 4)
 
-    def add(self, side, size, price):
-        sign = Side.sign(side) *-1
-        return Position(self.pos + sign * size, self.balance - sign * size * price)
-
-    def add_pos(self, opposition):
+    def __add__(self, opposition):
         return Position(self.pos + opposition.pos, self.balance + opposition.balance)
+
+    def __sub__(self, other):
+        return self.__add__(other.__mul__(-1))
+
+    def __mul__(self, other):
+        return Position(self.position() * other, self.balance * other)
+
+    def __div__(self, other):
+        return Position(self.position() / other, self.balance / other)
+
+    def __eq__(self, other):
+        return self.pos == other.pos and self.balance == other.balance
+
+    def __gt__(self, other):
+        return self.balance > other.balance
+
+    def __lt__(self, other):
+        return self.balance < other.balance
 
     def margin(self, margin):
         return Position(self.pos, self.balance + margin)
-
-    def pnl(self, side, size, price):
-        return self.add(side, size, price).balance
 
     def oppoiste_with_price(self, price):
         return Position(-self.pos, price * self.pos)
 
     def opposite_with_margin(self, margin):
-        return self.opposite().margin(margin)
+        return Position(-1 * self.pos, -1 * self.balance + margin)
 
     def __str__(self):
         return json.dumps(
@@ -57,6 +85,14 @@ class Position:
              'position': str(self.position()),
              'side': self.side(),
              'price': str(self.price())})
+
+
+
+def hedge_exit(exit_pos: Position, book: Book, target_d2q):
+    quote_price = book.quote(exit_pos.side()).price
+
+    target_hedge_balance = (target_d2q + quote_price) * exit_pos.abs_position()
+
 
 
 def remove_price(quote: Level, pos):
@@ -75,15 +111,16 @@ def remove_price(quote: Level, pos):
     return pos, last_price
 
 
-def exit_price_strategy(book: Book, pos: Position, config: MMParams):
+def exit_price_strategy(book: Book, pos: Position, config: MMParams, fee=Decimal(0.3)):
     # pos, last_price = remove_price(book.quote(pos.side()), pos)
     # if pos.balance > 0:
     #     remove_pos = pos.oppoiste_with_price(last_price)
+    # print("fee " + str(pos * Decimal('0.3')))
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
     add_pos = pos.oppoiste_with_price(book.quote(Side.opposite(pos.side())).price)
-    if pos.add_pos(remove_pos).balance > 0:
+    if pos + remove_pos > remove_pos * Decimal(fee/100):
         return remove_pos
-    elif pos.add_pos(add_pos).balance > 0:
+    elif (pos + add_pos).balance > 0:
         return add_pos
     else:
         return pos.opposite_with_margin(config.min_profit)
@@ -131,49 +168,49 @@ def test_exit_price_strategy_3d():
         return exit_order
 
     #remove
-    prior_pos = Position(Decimal('0.07'), Decimal('-900') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('900'), side=Side.BID)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('989')
     assert eo.side() == Side.ASK
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
-    prior_pos = Position(Decimal('-0.07'), Decimal('1100') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('1100'), side=Side.ASK)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('1011')
     assert eo.side() == Side.BID
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
     #quote
-    prior_pos = Position(Decimal('0.07'), Decimal('-1010') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('1010'), side=Side.BID)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('1011')
     assert eo.side() == Side.ASK
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
-    prior_pos = Position(Decimal('-0.07'), Decimal('990') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('990'), side=Side.ASK)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('989')
     assert eo.side() == Side.BID
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
     #min profit
-    prior_pos = Position(Decimal('0.07'), Decimal('-1013') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('1013'), side=Side.BID)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('1013.1429')
     assert eo.side() == Side.ASK
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
 
-    prior_pos = Position(Decimal('-0.07'), Decimal('900') * Decimal('0.07'))
+    prior_pos = Position(pos=Decimal('0.07'), price=Decimal('900'), side=Side.ASK)
     eo = test_with_params(prior_pos)
     assert eo.price() == Decimal('899.8571')
     assert eo.side() == Side.BID
-    pos = prior_pos.add_pos(eo)
+    pos = prior_pos + eo
     print("reminder " + str(pos))
     assert pos.balance > 0
 
