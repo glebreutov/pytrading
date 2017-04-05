@@ -118,7 +118,8 @@ class Engine:
                 if delta != 0:
                     exec_time = time.strftime("%H:%M:%S", time.localtime())
                     self.execution_sink.append({"time": exec_time, 'order_id': order_id,
-                                                'side': side, 'price': str(price), 'size': str(delta)})
+                                                'side': side, 'price': str(price), 'size': str(delta),
+                                                'timestamp': int(1000*time.time())})
                     self.pnl.execution(side, delta, price)
                     self.on_exec(tx)
 

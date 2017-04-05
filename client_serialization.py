@@ -44,5 +44,6 @@ def serialize_execs(execs):
 
 def serialize_important_events(ev_handler: ClientEventHandler):
     data = ev_handler.event_stack
+    dumps = json.dumps({"e": "important_events", "details": data})
     ev_handler.event_stack.clear()
-    return json.dumps({"e": "important_events", "details": data})
+    return dumps

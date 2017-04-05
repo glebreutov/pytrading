@@ -4,7 +4,9 @@ from mm.book import Side
 from decimal import Decimal
 
 from mm.book import BipolarContainer
-from mm.orders import RiskManager
+from mm.orders import RiskManager, Broker, OrderManager
+from mm.pnl import PNL
+from mm.printout import print_book_and_orders
 
 
 class MMParams:
@@ -63,6 +65,38 @@ def adjusted_size(order_size, order_side, pos):
         return order_size + abs(pos)
 
 
+def cost_of_remove_order(book: Book, side, amount, fee):
+    added_vol = 0
+    cost = 0
+    last_price = 0
+    quote = book.quote(side)
+    while added_vol < amount:
+        added_vol += quote.size
+        cost += quote.price * quote.size
+        last_price = quote.price
+        if quote.next_level is not None:
+            quote = quote.next_level
+        elif added_vol < amount:
+            return Decimal('99999999999999'), -1
+
+    return cost + (cost / 100) * fee, last_price
+
+
+def exit_price_strategy(book: Book, pnl: PNL, config: MMParams):
+    pos_side = pnl.position_side()
+    remove_cost, remove_price = cost_of_remove_order(book, Side.opposite(pos_side), pnl.abs_position(), pnl.fee)
+    quote_price = calc_price(book.quote(pos_side), config.liq_behind_exit)
+    if pnl.balance() + Side.sign(pos_side) * remove_cost > 0:
+        return remove_price
+    elif pnl.balance() + Side.sign(pos_side) * pnl.abs_position() * quote_price > 0:
+        return quote_price
+    else:
+        return specific_margin_price(
+            pnl.position_zero_price(),
+            pnl.position_side(),
+            config.min_profit)
+
+
 class Marketmaker:
     ENTER_TAG = 0
     EXIT_TAG = 1
@@ -108,7 +142,8 @@ class Marketmaker:
                                 quote_price,
                                 self.config.min_profit)
             if self.engine.pnl.abs_position() >= self.config.min_order_size:
-                self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice, str(self.engine.pnl.abs_position()))
+                self.engine.execution.request(Marketmaker.EXIT_TAG, exit_side, eprice,
+                                              str(self.engine.pnl.abs_position()))
                 self.engine.pnl.update_open_pnl(eprice)
 
     def tick(self):
@@ -136,8 +171,6 @@ class Marketmaker:
                 self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
 
 
-
-
 def test_adj_side():
     assert adjusted_size(Decimal('0.07'), Side.BID, Decimal('0.00')) == Decimal('0.07')
     assert adjusted_size(Decimal('0.07'), Side.ASK, Decimal('0.00')) == Decimal('0.07')
@@ -149,16 +182,55 @@ def test_adj_side():
     assert adjusted_size(Decimal('0.07'), Side.ASK, Decimal('-0.01')) == Decimal('0.06')
 
 
+def test_exit_price_strategy():
+    def test_with_params(pos, enter_price):
+        pnl = PNL('0.3')
+        book = Book()
+        book.quote_subscribers.append(pnl)
+        config = MMParams({
+            "min_levels": "5",
+            "liq_behind_exit": "0.02",
+            "liq_behind_entry": {"BID": "0.41", "ASK": "0.41"},
+            "order_sizes": {"BID": "0.07", "ASK": "0.07"},
+            "min_profit": "0.01",
+            "min_order_size": "0.01",
 
-test_adj_side()
-        # print(exit_price(Side.BID, 100, 105))
-        # print(exit_price(Side.ASK, 105, 100))
-        #
-        # print(exit_price(Side.BID, 100, 90))
-        # print(exit_price(Side.ASK, 105, 110))
+            "taker_exit_profit": "0.1"
+        })
+        pnl.execution(Side.side(pos), abs(pos), abs(enter_price))
+        median = 1000
+        for i in range(0, 5):
+            book.increment_level(Side.ASK, Decimal(median + i), Decimal(i / 100))
+            book.increment_level(Side.BID, Decimal(median - i), Decimal(i / 100))
+            book.quote_changed(Side.BID)
+            book.quote_changed(Side.ASK)
 
-        # mm = Marketmaker(None)
-        # bid_price = Decimal(1109.785)
-        # print(mm.specific_margin_price(bid_price, Side.BID, Decimal('1')))
-        # ask_price = 1000
-        # print(mm.specific_margin_price(bid_price, Side.ASK, Decimal('0.1')))
+        print_book_and_orders(book, Broker(OrderManager()))
+        exit_price = exit_price_strategy(book, pnl, config)
+        pnl.execution(Side.opposite(pnl.position_side()), abs(pos), exit_price)
+
+        return pnl.closed_pnl
+
+    #take
+    assert test_with_params(Decimal('0.07'), Decimal('60')) > 0
+    assert test_with_params(Decimal('-0.07'), Decimal('200')) > 0
+    #quote
+    assert test_with_params(Decimal('0.07'), Decimal('77')) > 0
+    assert test_with_params(Decimal('-0.07'), Decimal('77')) > 0
+    #min profit
+    assert test_with_params(Decimal('0.07'), Decimal('77')) > 0
+    assert test_with_params(Decimal('-0.07'), Decimal('77')) > 0
+
+# test_adj_side()
+# test_exit_price_strategy()
+# print(exit_price(Side.BID, 100, 105))
+# print(exit_price(Side.ASK, 105, 100))
+#
+# print(exit_price(Side.BID, 100, 90))
+# print(exit_price(Side.ASK, 105, 110))
+
+# mm = Marketmaker(None)
+# bid_price = Decimal(1109.785)
+# print(mm.specific_margin_price(bid_price, Side.BID, Decimal('1')))
+# ask_price = 1000
+# print(mm.specific_margin_price(bid_price, Side.ASK, Decimal('0.1')))
