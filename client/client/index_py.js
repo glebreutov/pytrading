@@ -104,10 +104,16 @@ function render () {
           <button onClick={sendRMNormal}>Normal</button>
           <button onClick={sendRMCancelAll}>Cancell All</button>
         </div>
-        <BookDisplay {...bookData} showOnlySide='ask' />
-        <BookDisplay {...bookData} showOnlySide='bid' reverse={true} />
-        <Executions executions={state.executions} />
-        <Log entries={state.log} />
+        <table className='tables'>
+          <tbody>
+            <tr>
+              <td><BookDisplay {...bookData} showOnlySide='ask' /></td>
+              <td><BookDisplay {...bookData} showOnlySide='bid' reverse={true} /></td>
+              <td><Executions executions={state.executions} /></td>
+              <td><Log entries={state.log} /></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>,
     document.getElementById('app')

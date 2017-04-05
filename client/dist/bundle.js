@@ -40463,10 +40463,38 @@ function render() {
           'Cancell All'
         )
       ),
-      _react2.default.createElement(_BookDisplay2.default, _extends({}, bookData, { showOnlySide: 'ask' })),
-      _react2.default.createElement(_BookDisplay2.default, _extends({}, bookData, { showOnlySide: 'bid', reverse: true })),
-      _react2.default.createElement(_Executions2.default, { executions: state.executions }),
-      _react2.default.createElement(_Log2.default, { entries: state.log })
+      _react2.default.createElement(
+        'table',
+        { className: 'tables' },
+        _react2.default.createElement(
+          'tbody',
+          null,
+          _react2.default.createElement(
+            'tr',
+            null,
+            _react2.default.createElement(
+              'td',
+              null,
+              _react2.default.createElement(_BookDisplay2.default, _extends({}, bookData, { showOnlySide: 'ask' }))
+            ),
+            _react2.default.createElement(
+              'td',
+              null,
+              _react2.default.createElement(_BookDisplay2.default, _extends({}, bookData, { showOnlySide: 'bid', reverse: true }))
+            ),
+            _react2.default.createElement(
+              'td',
+              null,
+              _react2.default.createElement(_Executions2.default, { executions: state.executions })
+            ),
+            _react2.default.createElement(
+              'td',
+              null,
+              _react2.default.createElement(_Log2.default, { entries: state.log })
+            )
+          )
+        )
+      )
     )
   ), document.getElementById('app'));
 }
