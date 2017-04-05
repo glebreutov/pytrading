@@ -10,26 +10,26 @@ from printout import print_book_and_orders
 
 
 class Position:
-    def __init__(self, pos, cost=None, price=None, side=None):
-        if cost is None and price is None:
+    def __init__(self, pos=None, balance=None, price=None, side=None):
+        if not balance and not price:
             raise RuntimeError
 
-        if cost is not None and price is not None:
+        if balance and price and pos:
             raise RuntimeError
 
-        if price is not None and side is None:
-            raise RuntimeError
+        if balance is not None and pos is not None:
+            self.pos = pos
+            self.balance = balance
+        elif pos is not None and price is not None:
+            self.pos = pos
+            self.balance = pos * price
+        elif price is not None and balance is not None:
+            self.pos = balance / price
+            self.balance = balance
 
-        if cost is not None:
-            if side is None:
-                self.balance = cost
-                self.pos = pos
-            else:
-                self.pos = abs(pos) * Side.sign(side)
-                self.balance = abs(cost) * Side.opposite_sign(side)
-        else:
-            self.pos = abs(pos) * Side.sign(side)
-            self.balance = Side.opposite_sign(side) * pos * price
+        if side is not None:
+            self.pos = abs(self.pos) * Side.sign(side)
+            self.balance = Side.opposite_sign(side) * abs(self.balance)
 
     def position(self):
         return self.pos
@@ -50,16 +50,16 @@ class Position:
         return round(abs(self.balance / self.pos), 4)
 
     def __add__(self, opposition):
-        return Position(self.pos + opposition.pos, self.balance + opposition.balance)
+        return Position(pos=self.pos + opposition.pos, balance=self.balance + opposition.balance)
 
     def __sub__(self, other):
         return self.__add__(other.__mul__(-1))
 
     def __mul__(self, other):
-        return Position(self.position() * other, self.balance * other)
+        return Position(pos=self.position() * other, balance=self.balance * other)
 
     def __div__(self, other):
-        return Position(self.position() / other, self.balance / other)
+        return Position(pos=self.position() / other, balance=self.balance / other)
 
     def __eq__(self, other):
         return self.pos == other.pos and self.balance == other.balance
@@ -71,13 +71,13 @@ class Position:
         return self.balance < other.balance
 
     def margin(self, margin):
-        return Position(self.pos, self.balance + margin)
+        return Position(pos=self.pos, balance=self.balance + margin)
 
     def oppoiste_with_price(self, price):
-        return Position(-self.pos, price * self.pos)
+        return Position(pos=self.pos, price=price, side=Side.opposite(self.side()))
 
     def opposite_with_margin(self, margin):
-        return Position(-1 * self.pos, -1 * self.balance + margin)
+        return Position(pos=-1 * self.pos, balance=-1 * self.balance + margin)
 
     def __str__(self):
         return json.dumps(
@@ -85,14 +85,6 @@ class Position:
              'position': str(self.position()),
              'side': self.side(),
              'price': str(self.price())})
-
-
-
-def hedge_exit(exit_pos: Position, book: Book, target_d2q):
-    quote_price = book.quote(exit_pos.side()).price
-
-    target_hedge_balance = (target_d2q + quote_price) * exit_pos.abs_position()
-
 
 
 def remove_price(quote: Level, pos):
@@ -118,7 +110,9 @@ def exit_price_strategy(book: Book, pos: Position, config: MMParams, fee=Decimal
     # print("fee " + str(pos * Decimal('0.3')))
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
     add_pos = pos.oppoiste_with_price(book.quote(Side.opposite(pos.side())).price)
-    if pos + remove_pos > remove_pos * Decimal(fee/100):
+    fee_ = remove_pos * Decimal(fee / 100)
+    fin_pos = pos + remove_pos
+    if fin_pos > fee_:
         return remove_pos
     elif (pos + add_pos).balance > 0:
         return add_pos
