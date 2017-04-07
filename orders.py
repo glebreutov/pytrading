@@ -4,7 +4,9 @@ from _decimal import Decimal
 from enum import Enum
 
 from mm.event_hub import EventHub, ImportantEvent
-from mm.book import BipolarContainer, Side
+from mm.book import BipolarContainer
+from posmath.position import Position
+from posmath.side import Side
 
 
 class CancelReq:
@@ -231,3 +233,8 @@ class Broker:
 
         cancel_side(Side.BID, self.orders.side(Side.BID))
         cancel_side(Side.ASK, self.orders.side(Side.ASK))
+
+class PosBroker:
+
+    def request(self, req):
+        pass

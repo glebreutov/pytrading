@@ -1,6 +1,7 @@
 import random
 
-from book import Book, Side
+from book import Book
+from posmath.side import Side
 
 from book import Level
 

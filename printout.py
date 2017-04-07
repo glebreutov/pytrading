@@ -1,6 +1,6 @@
 from functools import reduce
 
-from mm.book import Side
+from posmath.side import Side
 from mm.orders import OrderStatus
 
 

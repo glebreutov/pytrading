@@ -2,7 +2,7 @@ import random
 
 import time
 from book import Book
-from book import Side
+from posmath.side import Side
 from mm.orders import Broker
 import pnl
 

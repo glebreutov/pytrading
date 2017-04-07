@@ -1,6 +1,6 @@
 from _decimal import Decimal
 
-from book import Side
+from posmath.side import Side
 
 
 def test_closer_to_quote():

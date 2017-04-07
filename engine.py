@@ -7,7 +7,8 @@ import time
 
 from mm.client import ClientEventHandler
 from mm.event_hub import EventHub
-from mm.book import Book, Side
+from mm.book import Book
+from posmath.side import Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus
 from mm.pnl import PNL
 from mm.printout import print_book_and_orders

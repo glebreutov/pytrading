@@ -1,4 +1,4 @@
-from mm.book import Side
+from posmath.side import Side
 from decimal import Decimal
 
 from mm.book import BipolarContainer

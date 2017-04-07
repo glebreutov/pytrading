@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import json
 
-from mm.book import Side
+from posmath.side import Side
 from mm.orders import NewReq, ReplaceReq, CancelReq
 
 

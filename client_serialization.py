@@ -1,7 +1,8 @@
 import json
 
 from mm.client import ClientEventHandler
-from mm.book import Book, BipolarContainer, Side
+from mm.book import Book, BipolarContainer
+from posmath.side import Side
 from mm.orders import OrderManager, OrderStatus
 from mm.pnl import PNL
 
