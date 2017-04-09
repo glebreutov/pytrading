@@ -21,6 +21,24 @@ class BipolarContainer:
         self.container[side] = item
 
 
+class SideIter:
+    def __init__(self, top_quote):
+        self.top_quote = top_quote
+        self.curr_quote = top_quote
+
+    def __iter__(self):
+        self.curr_quote = self.top_quote
+        return self
+
+    def __next__(self):
+        tmp = self.curr_quote
+        if tmp is not None:
+            self.curr_quote = tmp.next_level
+            return tmp
+        else:
+            raise StopIteration
+
+
 class Level:
     def __init__(self, side, price, size):
         Side.check_fail(side)
@@ -49,6 +67,9 @@ class Level:
             self.next_level = level
         else:
             self.next_level.append(level)
+
+    def __iter__(self):
+        return SideIter(self)
 
     def __str__(self):
         return reduce(lambda acc, x: acc + str(x) + '\t', [self.side, "{:>10.8}".format(self.price), "{:>10.8}".format(self.size)], '')

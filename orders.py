@@ -208,12 +208,12 @@ class Broker:
         def can_new():
             return tag not in orders_side or orders_side[tag].status == OrderStatus.COMPLETED
 
-        if can_replace():
+        if size == 0:
+            print('zero size')
+        elif can_replace():
             self.om.replace_req(orders_side[tag].order_id, side, price, size)
-            pass
         elif can_new():
             orders_side[tag] = self.om.new_req(side, price, size)
-            pass
         else:
             print('order in transition')
 
@@ -233,6 +233,11 @@ class Broker:
 
         cancel_side(Side.BID, self.orders.side(Side.BID))
         cancel_side(Side.ASK, self.orders.side(Side.ASK))
+
+    def order(self, tag, side):
+        if tag in self.orders.side(side):
+            return self.orders.side(side)[tag]
+        return None
 
 class PosBroker:
 

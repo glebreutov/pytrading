@@ -21,7 +21,7 @@ def print_book_and_orders(book, broker):
         for lvl in levels[start:stop]:
             r = lvl.__str__()
             if lvl.price in order_dict:
-                r += '| ' + str(order_dict[lvl.price].pending)
+                r += '| ' + str(order_dict[lvl.price].amount)
             print(r)
 
     print_side(Side.BID)

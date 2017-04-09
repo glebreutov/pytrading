@@ -1,10 +1,11 @@
 from decimal import Decimal
 
+from exit_strategy import remove_exit_price_strategy
 from posmath.side import Side
 from instant_sumulator import simulator_env
-from marketmaker import MMParams
+from mmparams import MMParams
 from orders import Ack
-from posmath.position import Position, exit_price_strategy
+from posmath.position import Position
 from printout import print_book_and_orders
 
 
@@ -16,12 +17,12 @@ def exit_price_test_func(book, pandl, broker):
         "order_sizes": {"BID": "0.07", "ASK": "0.07"},
         "min_profit": "0.01",
         "min_order_size": "0.01",
-
+        "buried_volume": "1",
         "taker_exit_profit": "0.1"
     })
     start_position = Position(pandl.position(), pandl.balance())
     print("before " + str(start_position))
-    exit_order = exit_price_strategy(book, start_position, config)
+    exit_order = remove_exit_price_strategy(book, start_position, config)
     pandl.execution(exit_order.side(), exit_order.abs_position(), exit_order.price())
     broker.request(0, exit_order.side(), exit_order.price(), exit_order.abs_position())
     keys = broker.om.by_oid.keys()
@@ -78,7 +79,7 @@ def test_exit_price_strategy():
     #min profit
     prior_pos = Position(pos=Decimal('0.07'), price=Decimal('1013'), side=Side.BID)
     eo = simulator_env(exit_price_test_func, prior_pos)
-    assert eo.price() == Decimal('1013.1429')
+    assert eo.price() == Decimal('1013.1427')
     assert eo.side() == Side.ASK
     pos = prior_pos + eo
     print("reminder " + str(pos))
@@ -86,7 +87,7 @@ def test_exit_price_strategy():
 
     prior_pos = Position(pos=Decimal('0.07'), price=Decimal('900'), side=Side.ASK)
     eo = simulator_env(exit_price_test_func, prior_pos)
-    assert eo.price() == Decimal('899.8571')
+    assert eo.price() == Decimal('899.8572')
     assert eo.side() == Side.BID
     pos = prior_pos + eo
     print("reminder " + str(pos))

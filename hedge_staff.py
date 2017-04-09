@@ -1,11 +1,11 @@
 from _pydecimal import Decimal
 
-from book import Book, Level
-from marketmaker import MMParams
-from posmath.side import Side
+from book import Level
+from exit_strategy import remove_exit_price_strategy
 from orders import Broker
 from pnl import PNL
 from posmath.position import Position
+from posmath.side import Side
 
 
 def remove_price(quote: Level, pos):
@@ -24,23 +24,6 @@ def remove_price(quote: Level, pos):
     return pos, last_price
 
 
-def exit_price_strategy(book: Book, pos: Position, config: MMParams, fee=Decimal(0.3)):
-    # pos, last_price = remove_price(book.quote(pos.side()), pos)
-    # if pos.balance > 0:
-    #     remove_pos = pos.oppoiste_with_price(last_price)
-    # print("fee " + str(pos * Decimal('0.3')))
-    remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-    add_pos = pos.oppoiste_with_price(book.quote(Side.opposite(pos.side())).price)
-    fee_ = remove_pos * Decimal(fee / 100)
-    fin_pos = pos + remove_pos
-    if fin_pos > fee_:
-        return remove_pos
-    elif (pos + add_pos).balance > 0:
-        return add_pos
-    else:
-        return pos.opposite_with_margin(config.min_profit)
-
-
 def hedge_position(prior_pos, target_price, enter_price):
     x = (target_price * prior_pos.position() - prior_pos.balance) / (enter_price - target_price)
     return Position(price=enter_price, pos=x)
@@ -50,7 +33,7 @@ def hedge_runner(book, pandl: PNL, broker: Broker):
     def hedge_workflow(prior_pos: Position, target_price, enter_price):
         # define current state
         pandl.execution(prior_pos.side(), prior_pos.abs_position(), prior_pos.price())
-        exit_order = exit_price_strategy(book, prior_pos, None)
+        exit_order = remove_exit_price_strategy(book, prior_pos, None)
         #place exit order
         broker.request(0, exit_order.side(), exit_order.price(), exit_order.abs_position())
         # calc hedge order
@@ -60,7 +43,7 @@ def hedge_runner(book, pandl: PNL, broker: Broker):
         # exec hedge order
         pandl.execution(hedge_pos.side(), hedge_pos.abs_position(), hedge_pos.price())
         # look at new exit
-        exit_order = exit_price_strategy(book, Position(pandl.position(), pandl.balance()), None)
+        exit_order = remove_exit_price_strategy(book, Position(pandl.position(), pandl.balance()), None)
 
 
 def test_hedge():
@@ -91,4 +74,4 @@ def test_hedge():
     print("hedge " + str(hedge_pos))
     print("fin " + str(prior_pos + hedge_pos))
 
-test_hedge()
+#test_hedge()

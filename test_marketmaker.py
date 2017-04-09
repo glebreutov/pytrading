@@ -2,7 +2,9 @@ from decimal import Decimal
 
 from book import Book
 from posmath.side import Side
-from marketmaker import adjusted_size, MMParams, exit_price_strategy
+from marketmaker import adjusted_size
+from mmparams import MMParams
+from exit_strategy import hold_exit_price_strategy
 from orders import Broker, OrderManager
 from pnl import PNL
 from printout import print_book_and_orders
@@ -31,7 +33,7 @@ def test_exit_price_strategy():
             "order_sizes": {"BID": "0.07", "ASK": "0.07"},
             "min_profit": "0.01",
             "min_order_size": "0.01",
-
+            "buried_volume": "10",
             "taker_exit_profit": "0.1"
         })
         pnl.execution(Side.side(pos), abs(pos), abs(enter_price))
@@ -43,7 +45,7 @@ def test_exit_price_strategy():
             book.quote_changed(Side.ASK)
 
         print_book_and_orders(book, Broker(OrderManager()))
-        exit_price = exit_price_strategy(book, pnl, config)
+        exit_price = hold_exit_price_strategy(book, pnl, config)
         pnl.execution(Side.opposite(pnl.position_side()), abs(pos), exit_price)
 
         return pnl.closed_pnl
