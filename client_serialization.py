@@ -30,10 +30,11 @@ def serialize_pnl(pnl: PNL):
     return json.dumps({"e": "pnl", "details": {'position': str(pnl.position()),
                        'balance': str(pnl.balance()),
                        'zero exit price': str(pnl.position_zero_price()),
-                       'closed PNL': str(pnl.closed_pnl),
+                       'closed P&L': str(pnl.closed_pnl),
                        'open P&L': str(pnl.open_pnl()),
                        'nbbo P&L': str(pnl.nbbo_pnl()),
-                       'take P&L': str(pnl.take_pnl())
+                       'take P&L': str(pnl.take_pnl()),
+                       'method': str(pnl.exit_method())
                                                }})
 
 

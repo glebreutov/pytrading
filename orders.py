@@ -240,6 +240,5 @@ class Broker:
         return None
 
 class PosBroker:
-
     def request(self, req):
         pass

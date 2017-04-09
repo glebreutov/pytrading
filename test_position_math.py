@@ -18,7 +18,8 @@ def exit_price_test_func(book, pandl, broker):
         "min_profit": "0.01",
         "min_order_size": "0.01",
         "buried_volume": "1",
-        "taker_exit_profit": "0.1"
+        "taker_exit_profit": "0.1",
+        "price_tolerance": "0.0005"
     })
     start_position = Position(pandl.position(), pandl.balance())
     print("before " + str(start_position))

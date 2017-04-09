@@ -14,6 +14,7 @@ class SidePnl:
 
 class PNL:
     def __init__(self, fee):
+        self.method = "NONE"
         self.pnl = BipolarContainer(SidePnl(), SidePnl())
         self.position_cost = Decimal('0')
         self.closed_pnl = Decimal('0')
@@ -78,3 +79,9 @@ class PNL:
 
     def position_side(self):
         return Side.side(self.position())
+
+    def set_exit_method(self, method):
+        self.method = method
+
+    def exit_method(self):
+        return self.method

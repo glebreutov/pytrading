@@ -34,7 +34,8 @@ def test_exit_price_strategy():
             "min_profit": "0.01",
             "min_order_size": "0.01",
             "buried_volume": "10",
-            "taker_exit_profit": "0.1"
+            "taker_exit_profit": "0.1",
+            "price_tolerance": "0.0005"
         })
         pnl.execution(Side.side(pos), abs(pos), abs(enter_price))
         median = 1000

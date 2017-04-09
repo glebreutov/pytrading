@@ -51,7 +51,7 @@ class Marketmaker:
                 self.engine.execution.order(Marketmaker.ENTER_TAG, side)
                 size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
                 price = calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side))
-                if price_changed(Marketmaker.ENTER_TAG, side, price):
+                if price_changed(Marketmaker.ENTER_TAG, side, price) and size >= self.config.min_order_size:
                     self.engine.execution.request(
                         tag=Marketmaker.ENTER_TAG,
                         side=side,
@@ -59,6 +59,7 @@ class Marketmaker:
                         size=str(size)
                     )
                 self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
+                self.engine.pnl.set_exit_method("ENTER")
             else:
                 self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
@@ -70,11 +71,12 @@ class Marketmaker:
         if self.book_is_valid():
 
             position = Position(pos=self.engine.pnl.position(), balance=self.engine.pnl.balance())
-            exit_position = stop_loss_exit_strategy(self.engine.book, position, self.config)
+            exit_position, method = stop_loss_exit_strategy(self.engine.book, position, self.config)
             if self.engine.pnl.abs_position() >= self.config.min_order_size:
                 self.engine.execution.request(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                               str(exit_position.abs_position()))
                 self.engine.pnl.update_open_pnl(exit_position.price())
+                self.engine.pnl.set_exit_method(method)
 
     def tick(self):
         risk_status = self.engine.execution.rm.status

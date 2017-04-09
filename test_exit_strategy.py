@@ -18,12 +18,14 @@ def stop_loss_test_case(book, pandl, broker):
             "min_profit": "0.01",
             "min_order_size": "0.01",
             "buried_volume": "0.03",
-            "taker_exit_profit": "0.1"
+            "taker_exit_profit": "0.1",
+            "price_tolerance": "0.0005"
         })
         return stop_loss_exit_strategy(book, pos, config)
 
     position = Position(pos=pandl.position(), balance=pandl.balance())
-    exit_order = test_case(position)
+    exit_order, method = test_case(position)
+    print(method)
     broker.request(0, exit_order.side(), exit_order.price(), exit_order.abs_position())
     print_book_and_orders(book, broker)
     pandl.execution(exit_order.side(), exit_order.abs_position(), abs(exit_order.price()))
