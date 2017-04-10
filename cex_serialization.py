@@ -91,3 +91,13 @@ def open_orders(crypto="BTC", currency="USD"):
         },
         "oid": "1435927928274_6_open-orders"
     })
+
+
+def balance():
+    return json.dumps({
+        "e": "get-balance",
+        "data": {},
+        "oid": "1435927928274_2_get-balance"
+    })
+
+

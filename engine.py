@@ -8,6 +8,7 @@ import time
 from mm.client import ClientEventHandler
 from mm.event_hub import EventHub
 from mm.book import Book
+from posmath.position import Position
 from posmath.side import Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus
 from mm.pnl import PNL
@@ -126,20 +127,11 @@ class Engine:
 
             else:
                 print('wtf, unknown order id')
-                # self.execution.rm.set_cancel_all()
 
-        # omg what a hack
-        # elif event == "tx" and 'symbol2' in parsed['data']:
-        #     tx = Exec(Decimal(str(parsed['data']['amount'])),
-        #               Side.parseSide(parsed['data']['type']),
-        #               str(parsed['data']['order']),
-        #               Decimal(str(parsed['data']['price'])))
-        #     # execution!
-        #     self.order_manager.on_execution(tx)
-        #     self.pnl.execution(tx)
-        #     self.on_exec(tx)
-        #     print("Balance " + str(self.pnl.balance()))
-        #     print("Position " + str(self.pnl.position()))
-        #     print("last traded price " + str(self.pnl.last_traded_price()))
-        #     print("last traded side " + str(self.pnl.last_traded_side()))
-        #     print('###########')
+    def sync_balance(self, parsed):
+        print(parsed)
+        pos = Decimal(parsed['data']['balance']['BTC']) - target_pos
+        #self.pnl.
+        #restore pnl
+        #cancel all
+        #pos = Position(pos=parsed['data']['BTC'], balance=parsed['data']['USD'])

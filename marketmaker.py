@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from mm.exit_strategy import calc_price
+from mm.exit_strategy import calc_price, calc_price_between_levels
 from mm.event_hub import ImportantEvent
 from mm.exit_strategy import stop_loss_exit_strategy
 from mm.orders import RiskManager
@@ -50,7 +50,9 @@ class Marketmaker:
             if self.book_is_valid():
                 self.engine.execution.order(Marketmaker.ENTER_TAG, side)
                 size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
-                price = calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side))
+                #price = calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side))
+                price = calc_price_between_levels(self.engine.book.quote(side), self.config.liq_behind_entry.side(side),
+                                                  Decimal('0.0001'))
                 if price_changed(Marketmaker.ENTER_TAG, side, price) and size >= self.config.min_order_size:
                     self.engine.execution.request(
                         tag=Marketmaker.ENTER_TAG,

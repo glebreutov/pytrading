@@ -12,7 +12,7 @@ from websockets import ConnectionClosed
 from websockets import InvalidHandshake
 
 from mm.event_hub import ImportantLogger
-from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders
+from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders, balance
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
     serialize_important_events
 from mm.engine import Engine
@@ -61,7 +61,7 @@ async def hello():
 
         greeting = await websocket.recv()
         print(greeting)
-
+        await websocket.send(balance())
         await websocket.send(subscribe_msg(config['asset']['crypto'], config['asset']['currency']))
         while True:
             data = await websocket.recv()
@@ -80,6 +80,8 @@ async def tick(websocket, data):
         engine.order_event(event, parsed)
     elif event == 'open-orders':
         print('!open orders ' + str(len(parsed['data'])))
+    elif event == 'get-balance':
+        engine.sync_balance(parsed)
     else:
         logging.info("{\"in\":" + data + "}")
         #print(parsed)

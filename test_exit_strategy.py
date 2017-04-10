@@ -3,6 +3,7 @@ from decimal import Decimal
 from exit_strategy import stop_loss_exit_strategy
 from instant_sumulator import simulator_env
 from mmparams import MMParams
+from orders import Ack
 from posmath.position import Position
 from posmath.side import Side
 from printout import print_book_and_orders
@@ -27,10 +28,20 @@ def stop_loss_test_case(book, pandl, broker):
     exit_order, method = test_case(position)
     print(method)
     broker.request(0, exit_order.side(), exit_order.price(), exit_order.abs_position())
+    keys = broker.om.by_oid.keys()
+    tmp = ''
+    for x in keys:
+        tmp = x
+
+    broker.om.on_ack(Ack(tmp, 1, exit_order.abs_position(), exit_order.abs_position()))
+
     print_book_and_orders(book, broker)
     pandl.execution(exit_order.side(), exit_order.abs_position(), abs(exit_order.price()))
+    print("exit order " + str(exit_order))
     print("pnl " + str(position + exit_order))
 
-simulator_env(stop_loss_test_case, Position(pos=Decimal("0.07"), price=Decimal("2000"), side=Side.BID))
+
+eo = simulator_env(stop_loss_test_case, Position(pos=Decimal("0.07"), price=Decimal("2000"), side=Side.BID))
+
 simulator_env(stop_loss_test_case, Position(pos=Decimal("0.07"), price=Decimal("1011"), side=Side.BID))
-simulator_env(stop_loss_test_case, Position(pos=Decimal("0.07"), price=Decimal("1000"), side=Side.BID))
+simulator_env(stop_loss_test_case, Position(pos=Decimal("0.07"), price=Decimal("500"), side=Side.BID))

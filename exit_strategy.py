@@ -16,6 +16,11 @@ def calc_price_for_depth(quote: Level, liq_behind):
 
     return quote.price + Side.side(quote.side) * Decimal('0.0001')
 
+# pos is B
+# we wanna S
+# passsive - place order to S list
+# agressive order is to place on B
+
 
 def stop_loss_exit_strategy(book: Book, pos: Position, config: MMParams):
     def volume_behind_order(min_pos: Position):
@@ -23,15 +28,11 @@ def stop_loss_exit_strategy(book: Book, pos: Position, config: MMParams):
         return sum([level.volume() for level in book.quote(min_pos.side())
                     if sign * level.price > sign * min_pos.price()])
 
-    def calc_remove_pos(fee=Decimal('0.19')):
-        remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-        return Position(pos=remove_pos.position(),
-                        balance=remove_pos.balance + (remove_pos.balance / 100) * fee)
-
-    add_pos = pos.oppoiste_with_price(calc_price(book.quote(Side.opposite(pos.side())), config.liq_behind_exit))
+    price = calc_price_between_levels(book.quote(Side.opposite(pos.side())), config.liq_behind_exit, Decimal('0.0001'))
+    add_pos = pos.oppoiste_with_price(price)
     min_margin = pos.opposite_with_margin(config.min_profit)
-    remove_pos = calc_remove_pos()
-    if (pos + remove_pos).balance > 0:
+    remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
+    if (pos + remove_pos).balance > abs((remove_pos.balance / 100) * Decimal('0.19')):
         return remove_pos, "REMOVE"
     if (pos + add_pos).balance > 0:
         return add_pos, "QUOTE"
@@ -95,6 +96,20 @@ def hold_exit_price_strategy(book: Book, pnl: PNL, config: MMParams):
             pnl.position_zero_price(),
             pnl.position_side(),
             config.min_profit)
+
+
+def calc_price_between_levels(quote, liq_behind, min_step):
+    quote_liq = quote.size
+    dt = 0
+    while quote_liq < liq_behind:
+        dt = abs(quote.price - quote.next_level.price)
+        quote = quote.next_level
+        quote_liq += quote.size
+
+    if dt > min_step:
+        return quote.price + Side.sign(quote.side) * min_step
+    else:
+        return quote.price
 
 
 def calc_price(quote, liq_behind):
