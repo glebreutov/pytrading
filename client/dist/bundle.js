@@ -26668,7 +26668,7 @@ function BookDisplay(props) {
   // console.log(consolidated)
   return _react2.default.createElement(
     'table',
-    { className: 'order-table' },
+    { className: 'book table' },
     _react2.default.createElement(
       'tbody',
       null,

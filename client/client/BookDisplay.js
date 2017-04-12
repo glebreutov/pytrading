@@ -31,7 +31,7 @@ export default function BookDisplay (props) {
     .sortedUniqBy(c => c.price.valueOf())
     .value()
   // console.log(consolidated)
-  return <table className='order-table'>
+  return <table className='book table'>
       <tbody>
       {consolidated.map((level, index) => [
         ((index === 0) || (index > 0 && (consolidated[index - 1].side !== level.side))) &&
