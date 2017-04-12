@@ -37,6 +37,8 @@ def subscribe_msg(crypto="BTC", currency="USD"):
 def serialize_side(side):
     return 'buy' if side == Side.BID else 'sell'
 
+def deserialize_side(side):
+    return Side.BID if side == 'buy' else Side.ASK
 
 def serialize_request(req, crypto="BTC", currency="USD"):
     if type(req) == NewReq:

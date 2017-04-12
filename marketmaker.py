@@ -3,7 +3,7 @@ from decimal import Decimal
 from mm.exit_strategy import calc_price, calc_price_between_levels
 from mm.event_hub import ImportantEvent
 from mm.exit_strategy import stop_loss_exit_strategy
-from mm.orders import RiskManager
+from mm.orders import RiskManager, OrderStatus
 from mm.mmparams import MMParams
 from posmath.position import Position
 from posmath.side import Side
@@ -38,6 +38,12 @@ class Marketmaker:
                and min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind_entry.bid() \
                and min(bid_quote.levels(), ask_quote.levels()) > self.config.min_levels
 
+    def no_orders_for_tag(self, tag):
+        bo = self.engine.execution.order(tag, Side.BID)
+        so = self.engine.execution.order(tag, Side.ASK)
+        return (bo is None or bo.status == OrderStatus.COMPLETED) \
+               and (so is None or so.status == OrderStatus.COMPLETED)
+
     def enter_market(self):
         def price_changed(tag, side, new_price):
             order = self.engine.execution.order(tag, side)
@@ -47,10 +53,10 @@ class Marketmaker:
             return abs(order.price - new_price) > self.config.price_tolerance
 
         for side in Side.sides:
-            if self.book_is_valid():
+            if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.EXIT_TAG):
                 self.engine.execution.order(Marketmaker.ENTER_TAG, side)
                 size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
-                #price = calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side))
+                # price = calc_price(self.engine.book.quote(side), self.config.liq_behind_entry.side(side))
                 price = calc_price_between_levels(self.engine.book.quote(side), self.config.liq_behind_entry.side(side),
                                                   Decimal('0.0001'))
                 if price_changed(Marketmaker.ENTER_TAG, side, price) and size >= self.config.min_order_size:
@@ -70,7 +76,7 @@ class Marketmaker:
 
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
-        if self.book_is_valid():
+        if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.ENTER_TAG):
 
             position = Position(pos=self.engine.pnl.position(), balance=self.engine.pnl.balance())
             exit_position, method = stop_loss_exit_strategy(self.engine.book, position, self.config)

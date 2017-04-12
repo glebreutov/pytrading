@@ -130,7 +130,7 @@ class Engine:
 
     def sync_balance(self, parsed):
         print(parsed)
-        pos = Decimal(parsed['data']['balance']['BTC']) - target_pos
+#        pos = Decimal(parsed['data']['balance']['BTC']) - target_pos
         #self.pnl.
         #restore pnl
         #cancel all
