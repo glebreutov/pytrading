@@ -1,8 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import BookDisplay, {toLevel} from './BookDisplay'
-import Executions from './Executions'
-import Log from './Log'
+import Table from './Table'
 import KV from './KV'
 import Big from 'big.js/big'
 import * as _ from 'lodash'
@@ -19,6 +18,16 @@ const state = localStorage.getItem(lsKey) ? JSON.parse(localStorage.getItem(lsKe
   log: [],
   pnl: {},
 }
+
+function clearStorage () {
+  if (confirm('Local Storage will be cleared. Continue?')) {
+    localStorage.clear()
+    state.log = []
+    state.executions = []
+    render()
+  }
+}
+
 const url = `ws://${window.location.hash.replace('#', '') || '127.0.0.1:5678'}`
 const socket = new WebSocket(url)
 const send = obj => socket.send(JSON.stringify(obj))
@@ -103,14 +112,15 @@ function render () {
         <div className='controls'>
           <button onClick={sendRMNormal}>Normal</button>
           <button onClick={sendRMCancelAll}>Cancell All</button>
+          <button onClick={clearStorage}>Clear localStorage</button>
         </div>
         <table className='tables'>
           <tbody>
             <tr>
               <td><BookDisplay {...bookData} showOnlySide='ask' /></td>
               <td><BookDisplay {...bookData} showOnlySide='bid' reverse={true} /></td>
-              <td><Executions executions={state.executions} /></td>
-              <td><Log entries={state.log} /></td>
+              <td><Table items={state.executions} title='Executions' orderBy='-timestamp'/></td>
+              <td><Table items={state.log} title='Log' orderBy='-timestamp'/></td>
             </tr>
           </tbody>
         </table>
