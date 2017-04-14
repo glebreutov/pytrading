@@ -1,3 +1,4 @@
+from posmath.position import Position
 from posmath.side import Side
 from decimal import Decimal
 
@@ -15,41 +16,30 @@ class SidePnl:
 class PNL:
     def __init__(self, fee):
         self.method = "NONE"
-        self.pnl = BipolarContainer(SidePnl(), SidePnl())
-        self.position_cost = Decimal('0')
+        self.pos = Position(0, 0)
+        self.nbbo = BipolarContainer(0, 0)
         self.closed_pnl = Decimal('0')
         self.exit_price = Decimal('0')
         self.fee = Decimal(fee)
 
     def execution(self, side, delta, price):
         if delta > 0:
-            side_pnl = self.pnl.side(side)
-            side_pnl.position += abs(delta)
-            side_pnl.last_price = price
-            self.pnl.side(Side.opposite(side)).last_price = 0
-            self.position_cost += -Side.sign(side) * delta * price
+            self.pos += Position(pos=delta, price=price, side=side)
 
-        if self.position() == 0:
-            self.closed_pnl += self.position_cost
-            self.position_cost = 0
+        if self.pos.position() == 0:
+            self.closed_pnl += self.pos.balance
 
     def position(self):
-        return self.pnl.bid().position - self.pnl.ask().position
+        return self.pos.position()
 
     def abs_position(self):
-        return abs(self.position())
+        return self.pos.abs_position()
 
     def quote_changed(self, quote):
-        self.pnl.side(quote.side).quote_price = quote.price
+        self.nbbo.set_side(quote.side, quote.price)
 
     def balance(self):
-        return self.position_cost
-
-    def last_traded_price(self):
-        return max(self.pnl.ask().last_price, self.pnl.bid().last_price)
-
-    # def last_traded_side(self):
-    #     return Side.ASK if self.pnl.ask().last_price > 0 else Side.BID
+        return self.pos.balance
 
     def open_pnl(self):
         return self.balance() + self.position() * self.exit_price
@@ -59,17 +49,15 @@ class PNL:
 
     def nbbo_pnl(self):
         exit_side = Side.opposite_side(self.position())
-        exit_nbbo = self.pnl.side(exit_side).quote_price
-
-        delta = (self.position_zero_price() - exit_nbbo) * self.abs_position()
-        return delta * Side.sign(exit_side)
+        nbbo_price = self.nbbo.side(exit_side)
+        return (self.pos + Position(pos=self.pos.abs_position(), price=nbbo_price, side=exit_side)).balance
 
     def take_pnl(self):
         exit_side = Side.opposite_side(self.position())
-        exit_nbbo = self.pnl.side(Side.side(self.position())).quote_price
+        take_price = self.nbbo.side(Side.side(self.position()))
 
-        delta = (self.position_zero_price() - exit_nbbo) * self.abs_position()
-        return delta * Side.sign(exit_side) - (delta / 100 * self.fee)
+        balance = (self.pos + Position(pos=self.pos.abs_position(), price=take_price, side=exit_side)).balance
+        return balance - abs(balance) * self.fee
 
     def position_zero_price(self):
         if self.abs_position() == 0:

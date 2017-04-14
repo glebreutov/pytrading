@@ -36,8 +36,8 @@ def stop_loss_exit_strategy(book: Book, pos: Position, config: MMParams):
         return remove_pos, "REMOVE"
     if (pos + add_pos).balance > 0:
         return add_pos, "QUOTE"
-    elif volume_behind_order(min_margin) >= config.buried_volume:
-        return add_pos, "STOP LOSS"
+    # elif volume_behind_order(min_margin) >= config.buried_volume:
+    #     return add_pos, "STOP LOSS"
     else:
         return min_margin, "MIN PROFIT"
 
@@ -83,24 +83,11 @@ def cost_of_remove_order(book: Book, side, amount, fee):
     return cost + (cost / 100) * fee, last_price
 
 
-def hold_exit_price_strategy(book: Book, pnl: PNL, config: MMParams):
-    pos_side = pnl.position_side()
-    remove_cost, remove_price = cost_of_remove_order(book, Side.opposite(pos_side), pnl.abs_position(), pnl.fee)
-    quote_price = calc_price(book.quote(pos_side), config.liq_behind_exit)
-    if pnl.balance() + Side.sign(pos_side) * remove_cost > 0:
-        return remove_price
-    elif pnl.balance() + Side.sign(pos_side) * pnl.abs_position() * quote_price > 0:
-        return quote_price
-    else:
-        return specific_margin_price(
-            pnl.position_zero_price(),
-            pnl.position_side(),
-            config.min_profit)
-
-
-def calc_price_between_levels(quote, liq_behind, min_step):
+def calc_price_between_levels(quote, liq_behind, min_step, place_to_spread=False):
     quote_liq = quote.size
-    dt = 0
+
+    # dt = abs(0 - quote.price)
+    dt = abs(0 - quote.price) if place_to_spread else 0
     while quote_liq < liq_behind:
         dt = abs(quote.price - quote.next_level.price)
         quote = quote.next_level

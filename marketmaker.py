@@ -72,7 +72,7 @@ class Marketmaker:
                 self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
     def exit_market(self):
-        print("placing exit order")
+        # print("placing exit order")
 
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)

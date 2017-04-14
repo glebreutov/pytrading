@@ -94,4 +94,16 @@ def test_exit_price_strategy():
     print("reminder " + str(pos))
     assert pos.balance > 0
 
-test_exit_price_strategy()
+
+def test_pos():
+    bid = Position(pos=Decimal('1'), price=100, side=Side.ASK) + Position(pos=Decimal('0.1'), price=101, side=Side.BID)
+    assert bid.position() == Decimal('-0.9')
+    assert bid.side() == Side.ASK
+
+    bid = Position(pos=Decimal('1'), price=100, side=Side.BID) + Position(pos=Decimal('0.1'), price=101, side=Side.ASK)
+    assert bid.position() == Decimal('0.9')
+    assert bid.side() == Side.BID
+
+    print(bid)
+
+test_pos()

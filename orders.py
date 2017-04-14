@@ -165,6 +165,18 @@ class OrderManager:
                 if order.status == OrderStatus.REQ_SENT:
                     order.status = OrderStatus.ACK
 
+    def market_event(self, ev):
+        type_ev = type(ev)
+        if type_ev == Ack:
+            self.on_ack(ev)
+        elif type_ev == Replaced:
+            self.on_replace(ev)
+        elif type_ev == Cancelled:
+            self.on_cancel(ev)
+        elif type_ev == Exec:
+            self.on_execution(ev)
+
+
 
 class RiskManager:
     NORMAL = 1

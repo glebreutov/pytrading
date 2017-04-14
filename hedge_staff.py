@@ -43,7 +43,7 @@ def hedge_runner(book, pandl: PNL, broker: Broker):
         # exec hedge order
         pandl.execution(hedge_pos.side(), hedge_pos.abs_position(), hedge_pos.price())
         # look at new exit
-        exit_order = remove_exit_price_strategy(book, Position(pandl.position(), pandl.balance()), None)
+        exit_order = remove_exit_price_strategy(book, Position(pandl.pos(), pandl.balance()), None)
 
 
 def test_hedge():
