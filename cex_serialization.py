@@ -104,7 +104,7 @@ def deserialize_order_event(event, parsed):
 
     if "complete" in parsed['data'] and parsed['data']['complete'] is True:
         return Exec(Decimal('0'),
-                    str(parsed['data']['id']), Decimal('0'))
+                    str(parsed['data']['id']))
     elif event == "place-order":
         return Ack(parsed['oid'],
                    str(parsed['data']['id']),
@@ -121,7 +121,7 @@ def deserialize_order_event(event, parsed):
         return Cancelled(parsed['oid'], str(parsed['data']['order_id']))
     elif event == "order" and "cancel" not in parsed['data']:
         return Exec(Decimal(str(parsed['data']['remains'])) / 100000000,
-                    str(parsed['data']['id']), Decimal(parsed['data']['id']))
+                    str(parsed['data']['id']))
     else:
         print("Ignored event " + str(parsed))
         return None

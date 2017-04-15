@@ -30,10 +30,10 @@ class ReplaceReq(NewReq):
 
 
 class Exec:
-    def __init__(self, remains, order_id, fee):
+    def __init__(self, remains, order_id):
         self.order_id = order_id
         self.remains = remains
-        self.fee = fee
+        self.fee = Decimal('0')
         self.side = Side.NONE
         self.delta = 0
         self.price = 0

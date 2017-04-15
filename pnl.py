@@ -15,9 +15,10 @@ class PNL:
         self.exit_price = Decimal('0')
         self.fee = Decimal(fee)
 
-    def execution(self, side, delta, price):
-        if delta > 0:
-            self.pos += Position(pos=delta, price=price, side=side)
+    def execution(self, tx: Exec):
+        exec_pos = Position(pos=tx.delta, price=tx.price, side=tx.side)
+        if tx.delta > 0:
+            self.pos += exec_pos + exec_pos.fee_pos(tx.fee)
 
         if self.pos.position() == 0:
             self.closed_pnl += self.pos.balance

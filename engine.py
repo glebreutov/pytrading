@@ -73,15 +73,18 @@ class Engine:
             if type(ev) == ErrorRequest:
                 self.event_hub.order_error(ev.descr)
             elif type(ev) == Exec and ev.delta > 0:
-                self.pnl.execution(ev.side, ev.delta, ev.price)
-                self.on_exec(ev)
+                if self.pnl.exit_method() == "REMOVE":
+                    ev.fee = self.pnl.fee
+                self.pnl.execution(ev)
                 exec_time = time.strftime("%H:%M:%S", time.localtime())
+                order_fee = Position(pos=ev.delta, price=ev.price, side=ev.side).fee_pos(ev.fee).balance
                 self.execution_sink.append({"time": exec_time, 'order_id': ev.order_id,
                                             'side': ev.side, 'price': str(ev.price), 'size': str(ev.delta),
                                             'timestamp': int(1000 * time.time()),
                                             'method': str(self.pnl.exit_method()),
-                                            'P&L': str(self.pnl.closed_pnl)})
-
+                                            'P&L': str(self.pnl.closed_pnl),
+                                            'fee': str(order_fee)})
+                self.on_exec(ev)
         except UnknownOid:
             self.event_hub.order_error('Unknown oid ' + ev.oid)
             self.execution.rm.set_cancel_all()
