@@ -10,7 +10,8 @@ from mm.event_hub import EventHub
 from mm.book import Book
 from posmath.position import Position
 from posmath.side import Side
-from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus
+from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus, ErrorRequest, UnknownOid, \
+    UnknownOrderId, ExecHasNoEffect, NegativeAmountAfterExec
 from mm.pnl import PNL
 from mm.printout import print_book_and_orders
 
@@ -43,7 +44,7 @@ class Engine:
 
         nextsnap = int(md['data']['id'])
         if self.snapid != -1 and nextsnap - self.snapid > 1:
-            print("GAP! "+str(nextsnap - self.snapid))
+            print("GAP! " + str(nextsnap - self.snapid))
             self.event_hub.gap(nextsnap - self.snapid)
 
         self.snapid = nextsnap
@@ -57,79 +58,38 @@ class Engine:
         if hasattr(self.algo, 'on_exec'):
             self.algo.on_exec(details)
 
-    def order_event(self, event, parsed):
-        ok = True
-        if 'ok' in parsed and parsed['ok'] != 'ok' or 'error' in parsed['data']:
-            print('Order error')
-            print(parsed)
-            error_descr = parsed['data']['error'].strip()
-            self.event_hub.order_error(error_descr)
-            if error_descr == 'Error: Place order error: Insufficient funds.' \
-                    or error_descr == 'Rate limit exceeded':
-                self.execution.rm.set_cancel_all()
-
-            ok = False
-
-        if event == "place-order" and ok:
-            ack = Ack(parsed['oid'],
-                      str(parsed['data']['id']),
-                      Decimal(str(parsed['data']['pending'])),
-                      Decimal(str(parsed['data']['amount'])))
-            # new order ack
-            self.order_manager.on_ack(ack)
-        elif event == "place-order" and not ok:
-            self.order_manager.remove_order(parsed['oid'])
-        elif event == "cancel-replace-order" and ok:
-            repl = Replaced(parsed['oid'],
-                            str(parsed['data']['id']),
-                            Decimal(str(parsed['data']['pending'])),
-                            Decimal(str(parsed['data']['amount'])),
-                            Decimal(str(parsed['data']['price'])))
-            self.order_manager.on_replace(repl)
-
-            # replaced
-        elif event == "cancel-order" and ok:
-            canc = Cancelled(parsed['oid'],
-                             str(parsed['data']['order_id']))
-            self.order_manager.on_cancel(canc)
-            # cancelled
-        elif event in ["cancel-replace-order", "cancel-order"] and not ok:
-            if parsed['data']['error'] == 'Error: Order not found' and parsed['oid'] in self.order_manager.by_oid:
-                self.order_manager.remove_order(parsed['oid'])
-            else:
-                self.execution.rm.set_exit_only()
-                if parsed['oid'] in self.order_manager.by_oid:
-                    self.order_manager.by_oid[parsed['oid']].status = OrderStatus.ACK
-                print('error occures on replace cancelling orders')
-
-        elif event == "order":
-            order_id = str(parsed['data']['id'])
-            if order_id in self.order_manager.by_order_id:
-                order = self.order_manager.by_order_id[order_id]
-
-                tx = Exec(Decimal(str(parsed['data']['remains'])) / 100000000,
-                          order.side,
-                          order_id,
-                          order.price)
-
-                side, delta, price = self.order_manager.on_execution(tx)
-                if delta != 0:
-                    exec_time = time.strftime("%H:%M:%S", time.localtime())
-                    self.execution_sink.append({"time": exec_time, 'order_id': order_id,
-                                                'side': side, 'price': str(price), 'size': str(delta),
-                                                'timestamp': int(1000*time.time()),
-                                                'method': str(self.pnl.exit_method()),
-                                                'P&L': str(self.pnl.closed_pnl)})
-                    self.pnl.execution(side, delta, price)
-                    self.on_exec(tx)
-
-            else:
-                print('wtf, unknown order id')
-
     def sync_balance(self, parsed):
         print(parsed)
-#        pos = Decimal(parsed['data']['balance']['BTC']) - target_pos
-        #self.pnl.
-        #restore pnl
-        #cancel all
-        #pos = Position(pos=parsed['data']['BTC'], balance=parsed['data']['USD'])
+
+        #        pos = Decimal(parsed['data']['balance']['BTC']) - target_pos
+        # self.pnl.
+        # restore pnl
+        # cancel all
+        # pos = Position(pos=parsed['data']['BTC'], balance=parsed['data']['USD'])
+
+    def order_event(self, ev):
+        try:
+            self.order_manager.market_event(ev)
+            if type(ev) == ErrorRequest:
+                self.event_hub.order_error(ev.descr)
+            elif type(ev) == Exec and ev.delta > 0:
+                self.pnl.execution(ev.side, ev.delta, ev.price)
+                self.on_exec(ev)
+                exec_time = time.strftime("%H:%M:%S", time.localtime())
+                self.execution_sink.append({"time": exec_time, 'order_id': ev.order_id,
+                                            'side': ev.side, 'price': str(ev.price), 'size': str(ev.delta),
+                                            'timestamp': int(1000 * time.time()),
+                                            'method': str(self.pnl.exit_method()),
+                                            'P&L': str(self.pnl.closed_pnl)})
+
+        except UnknownOid:
+            self.event_hub.order_error('Unknown oid ' + ev.oid)
+            self.execution.rm.set_cancel_all()
+        except UnknownOrderId:
+            self.event_hub.order_error('Unknown order id ' + ev.order_id)
+            self.execution.rm.set_cancel_all()
+        except ExecHasNoEffect:
+            pass
+        except NegativeAmountAfterExec:
+            self.event_hub.order_error('NegativeAmountAfterExec')
+            self.execution.rm.set_cancel_all()

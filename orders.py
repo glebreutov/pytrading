@@ -30,11 +30,13 @@ class ReplaceReq(NewReq):
 
 
 class Exec:
-    def __init__(self, amount, side, order_id, price: Decimal):
+    def __init__(self, remains, order_id, fee):
         self.order_id = order_id
-        self.side = side
-        self.amount = amount
-        self.price = price
+        self.remains = remains
+        self.fee = fee
+        self.side = Side.NONE
+        self.delta = 0
+        self.price = 0
 
 
 class Ack:
@@ -56,6 +58,19 @@ class Cancelled(Ack):
         super().__init__(oid, order_id, 0, 0)
 
 
+class ErrorRequest:
+    ORDER_NOT_FOUND = 0
+    RATE_LIMIT = 1
+    INSUFICIENT_FUNDS = 2
+    INVALID_AMOUNT = 3
+    UNEXPECTED_ERROR = 4
+
+    def __init__(self, oid, descr, error_class):
+        self.descr = descr
+        self.oid = oid
+        self.error_class = error_class
+
+
 class Order:
     def __init__(self, side, price: Decimal, size):
         self.price = price
@@ -74,6 +89,22 @@ class OrderStatus(Enum):
     COMPLETED = 3
 
 
+class UnknownOid(Exception):
+    pass
+
+
+class UnknownOrderId(Exception):
+    pass
+
+
+class ExecHasNoEffect(Exception):
+    pass
+
+
+class NegativeAmountAfterExec(Exception):
+    pass
+
+
 class OrderManager:
     def __init__(self):
         self.by_order_id = {}
@@ -88,6 +119,8 @@ class OrderManager:
         return order
 
     def on_ack(self, ack: Ack):
+        if ack.oid not in self.by_oid.keys():
+            raise UnknownOid
         order = self.by_oid[ack.oid]
         order.order_id = ack.order_id
         order.pending = ack.pending
@@ -114,9 +147,8 @@ class OrderManager:
         return order
 
     def on_replace(self, rep: Replaced):
-        # if rep.order_id not in self.by_order_id:
-        #     print('error, unknown order replacement'+str(rep))
-        #     return
+        if rep.oid not in self.by_oid.keys():
+            raise UnknownOid
 
         o = self.by_oid[rep.oid]
         if o.order_id != rep.order_id:
@@ -135,26 +167,40 @@ class OrderManager:
         return self.by_order_id[order_id]
 
     def on_cancel(self, canc: Cancelled):
-
+        if canc.order_id not in self.by_order_id.keys():
+            raise UnknownOrderId
         order = self.by_order_id[canc.order_id]
         order.status = OrderStatus.COMPLETED
         del self.by_order_id[canc.order_id]
 
     def on_execution(self, tx: Exec):
+        if tx.order_id not in self.by_order_id.keys():
+            raise UnknownOrderId
         order = self.by_order_id[tx.order_id]
-        delta = order.amount - abs(tx.amount)
-        order.amount = abs(tx.amount)
-
+        delta = order.amount - abs(tx.remains)
+        order.amount = abs(tx.remains)
+        tx.side = order.side
+        tx.price = order.price
+        tx.delta = delta
         if order.amount <= 0:
             order.status = OrderStatus.COMPLETED
             del self.by_order_id[tx.order_id]
         if order.amount < 0:
-            print('error order amount less than zero')
+            raise NegativeAmountAfterExec
 
-        return order.side, delta, order.price
+    def remove_request(self, ev):
+        if ev.oid not in self.by_oid:
+            print("remove_request: no order for oid " + str(ev.oid))
+            return
+        order = self.by_oid[ev.oid]
+        order.status = OrderStatus.ACK
+        del self.by_oid[ev.oid]
 
-    def remove_order(self, oid):
-        order = self.by_oid[oid]
+    def remove_order(self, ev):
+        if ev.oid not in self.by_oid:
+            print("remove_order: no order for oid " + str(ev.oid))
+            return
+        order = self.by_oid[ev.oid]
         order.status = OrderStatus.COMPLETED
         if order.order_id in self.by_order_id:
             del self.by_order_id[order.order_id]
@@ -175,7 +221,11 @@ class OrderManager:
             self.on_cancel(ev)
         elif type_ev == Exec:
             self.on_execution(ev)
-
+        elif type_ev == ErrorRequest:
+            if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
+                self.remove_order(ev)
+            else:
+                self.remove_request(ev)
 
 
 class RiskManager:

@@ -6,13 +6,6 @@ from mm.book import BipolarContainer
 from mm.orders import Exec
 
 
-class SidePnl:
-    def __init__(self):
-        self.position = Decimal(0)
-        self.quote_price = 0
-        self.last_price = 0
-
-
 class PNL:
     def __init__(self, fee):
         self.method = "NONE"
@@ -53,15 +46,17 @@ class PNL:
         return (self.pos + Position(pos=self.pos.abs_position(), price=nbbo_price, side=exit_side)).balance
 
     def take_pnl(self):
+        if self.pos.position() == 0:
+            return Decimal('0')
         exit_side = Side.opposite_side(self.position())
         take_price = self.nbbo.side(Side.side(self.position()))
 
         balance = (self.pos + Position(pos=self.pos.abs_position(), price=take_price, side=exit_side)).balance
-        return balance - abs(balance) * self.fee
+        return balance - abs(balance) / Decimal('100') * self.fee
 
     def position_zero_price(self):
         if self.abs_position() == 0:
-            return 0
+            return Decimal('0')
         else:
             return abs(self.balance() / self.abs_position())
 

@@ -12,7 +12,8 @@ from websockets import ConnectionClosed
 from websockets import InvalidHandshake
 
 from mm.event_hub import ImportantLogger
-from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders, balance
+from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders, balance, \
+    deserialize_order_event
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
     serialize_important_events
 from mm.engine import Engine
@@ -77,7 +78,9 @@ async def tick(websocket, data):
         await websocket.send(json.dumps({'e': 'pong'}))
     elif event in ["place-order", "cancel-replace-order", "cancel-order", "tx", "order"]:
         logging.info("{\"in\":" + data + "}")
-        engine.order_event(event, parsed)
+        order_event = deserialize_order_event(event, parsed)
+        if order_event is not None:
+            engine.order_event(order_event)
     elif event == 'open-orders':
         print('!open orders ' + str(len(parsed['data'])))
     elif event == 'get-balance':

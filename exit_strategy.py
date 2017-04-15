@@ -32,7 +32,7 @@ def stop_loss_exit_strategy(book: Book, pos: Position, config: MMParams):
     add_pos = pos.oppoiste_with_price(price)
     min_margin = pos.opposite_with_margin(config.min_profit)
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-    if (pos + remove_pos).balance > abs((remove_pos.balance / 100) * Decimal('0.19')):
+    if (pos + remove_pos).balance > abs((remove_pos.balance / 100) * Decimal('0.18')):
         return remove_pos, "REMOVE"
     if (pos + add_pos).balance > 0:
         return add_pos, "QUOTE"

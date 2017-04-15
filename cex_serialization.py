@@ -3,8 +3,10 @@ import hashlib
 import hmac
 import json
 
+from decimal import Decimal
+
 from posmath.side import Side
-from mm.orders import NewReq, ReplaceReq, CancelReq
+from mm.orders import NewReq, ReplaceReq, CancelReq, ErrorRequest, Exec, Ack, Replaced, Cancelled
 
 
 def create_signature(key, secret):  # (string key, string secret)
@@ -37,8 +39,10 @@ def subscribe_msg(crypto="BTC", currency="USD"):
 def serialize_side(side):
     return 'buy' if side == Side.BID else 'sell'
 
+
 def deserialize_side(side):
     return Side.BID if side == 'buy' else Side.ASK
+
 
 def serialize_request(req, crypto="BTC", currency="USD"):
     if type(req) == NewReq:
@@ -80,6 +84,47 @@ def serialize_request(req, crypto="BTC", currency="USD"):
         })
     else:
         raise RuntimeError
+
+
+def parse_cex_error(error_descr):
+    if error_descr == 'Error: Place order error: Insufficient funds.':
+        return ErrorRequest.INSUFICIENT_FUNDS
+    elif error_descr == 'Rate limit exceeded':
+        return ErrorRequest.RATE_LIMIT
+    elif error_descr == 'Error: Order not found':
+        return ErrorRequest.ORDER_NOT_FOUND
+    else:
+        return ErrorRequest.UNEXPECTED_ERROR
+
+
+def deserialize_order_event(event, parsed):
+    if 'ok' in parsed and parsed['ok'] != 'ok' or 'error' in parsed['data']:
+        error_descr = parsed['data']['error'].strip()
+        return ErrorRequest(parsed['oid'], error_descr, parse_cex_error(error_descr))
+
+    if "complete" in parsed['data'] and parsed['data']['complete'] is True:
+        return Exec(Decimal('0'),
+                    str(parsed['data']['id']), Decimal('0'))
+    elif event == "place-order":
+        return Ack(parsed['oid'],
+                   str(parsed['data']['id']),
+                   Decimal(str(parsed['data']['pending'])),
+                   Decimal(str(parsed['data']['amount'])))
+
+    elif event == "cancel-replace-order":
+        return Replaced(parsed['oid'],
+                        str(parsed['data']['id']),
+                        Decimal(str(parsed['data']['pending'])),
+                        Decimal(str(parsed['data']['amount'])),
+                        Decimal(str(parsed['data']['price'])))
+    elif event == "cancel-order":
+        return Cancelled(parsed['oid'], str(parsed['data']['order_id']))
+    elif event == "order" and "cancel" not in parsed['data']:
+        return Exec(Decimal(str(parsed['data']['remains'])) / 100000000,
+                    str(parsed['data']['id']), Decimal(parsed['data']['id']))
+    else:
+        print("Ignored event " + str(parsed))
+        return None
 
 
 def open_orders(crypto="BTC", currency="USD"):
