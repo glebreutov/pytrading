@@ -11,7 +11,7 @@ from mm.book import Book
 from posmath.position import Position
 from posmath.side import Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus, ErrorRequest, UnknownOid, \
-    UnknownOrderId, ExecHasNoEffect, NegativeAmountAfterExec, UnknownExec
+    UnknownOrderId, ExecHasNoEffect, NegativeAmountAfterExec, UnknownExec, RiskManager
 from mm.pnl import PNL
 from mm.printout import print_book_and_orders
 
@@ -32,6 +32,7 @@ class Engine:
         self.event_hub.subscribe(self.algo)
         self.event_hub.subscribe(self.event_log)
         self.event_hub.subscribe(self.order_manager)
+        self.rm = RiskManager(self.execution, self.event_hub)
 
     def on_md(self, md):
         # update book
@@ -87,15 +88,15 @@ class Engine:
                 self.on_exec(ev)
         except UnknownOid:
             self.event_hub.order_error('Unknown oid ' + ev.oid)
-            self.execution.rm.set_cancel_all()
+            self.rm.set_cancel_all()
         except UnknownOrderId:
             self.event_hub.order_error('Unknown order id ' + ev.order_id)
-            self.execution.rm.set_cancel_all()
+            self.rm.set_cancel_all()
         except ExecHasNoEffect:
             pass
         except NegativeAmountAfterExec:
             self.event_hub.order_error('NegativeAmountAfterExec')
-            self.execution.rm.set_cancel_all()
+            self.rm.set_cancel_all()
         except UnknownExec:
             self.event_hub.order_error('UnknownExec')
-            self.execution.rm.set_cancel_all()
+            self.rm.set_cancel_all()

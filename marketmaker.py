@@ -86,7 +86,7 @@ class Marketmaker:
                 self.engine.pnl.set_exit_method(method)
 
     def tick(self):
-        risk_status = self.engine.execution.rm.status
+        risk_status = self.engine.rm.status
         if risk_status == RiskManager.CANCEL_ALL:
             self.engine.execution.cancel_all()
         elif risk_status == RiskManager.EXIT_ONLY:

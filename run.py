@@ -101,9 +101,9 @@ def consumer(msg):
     print("new RM status" + msg)
     new_status = json.loads(msg)['new_status']
     if new_status == 'CANCELL_ALL':
-        engine.execution.rm.set_cancel_all()
+        engine.rm.set_cancel_all()
     elif new_status == 'NORMAL':
-        engine.execution.rm.set_normal()
+        engine.rm.set_normal()
     else:
         print("unknown RM status" + msg)
 

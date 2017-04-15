@@ -238,19 +238,22 @@ class OrderManager:
 
 
 class RiskManager:
-    NORMAL = 1
-    CANCEL_ALL = 2
-    EXIT_ONLY = 3
+    NORMAL = "NORMAL"
+    CANCEL_ALL = "CANCEL_ALL"
+    EXIT_ONLY = "EXIT_ONLY"
 
-    def __init__(self, broker):
+    def __init__(self, broker: Broker, event_hub: EventHub):
+        self.event_hub = event_hub
         self.broker = broker
         self.status = RiskManager.CANCEL_ALL
 
     def set_normal(self):
         self.status = RiskManager.NORMAL
+        self.event_hub.rm_event(self.status)
 
     def set_cancel_all(self):
         self.status = RiskManager.CANCEL_ALL
+        self.event_hub.rm_event(self.status)
         self.broker.cancel_all()
 
     def trading_allowed(self):
@@ -258,6 +261,7 @@ class RiskManager:
 
     def set_exit_only(self):
         self.status = RiskManager.EXIT_ONLY
+        self.event_hub.rm_event(self.status)
 
     def exit_only(self):
         return self.status == RiskManager.EXIT_ONLY
@@ -267,7 +271,6 @@ class Broker:
     def __init__(self, om: OrderManager):
         self.om = om
         self.orders = BipolarContainer({}, {})
-        self.rm = RiskManager(self)
 
     def request(self, tag, side, price, size):
         orders_side = self.orders.side(side)
