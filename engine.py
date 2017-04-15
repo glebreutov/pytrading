@@ -11,7 +11,7 @@ from mm.book import Book
 from posmath.position import Position
 from posmath.side import Side
 from mm.orders import Broker, OrderManager, Ack, Replaced, Cancelled, Exec, OrderStatus, ErrorRequest, UnknownOid, \
-    UnknownOrderId, ExecHasNoEffect, NegativeAmountAfterExec
+    UnknownOrderId, ExecHasNoEffect, NegativeAmountAfterExec, UnknownExec
 from mm.pnl import PNL
 from mm.printout import print_book_and_orders
 
@@ -95,4 +95,7 @@ class Engine:
             pass
         except NegativeAmountAfterExec:
             self.event_hub.order_error('NegativeAmountAfterExec')
+            self.execution.rm.set_cancel_all()
+        except UnknownExec:
+            self.event_hub.order_error('UnknownExec')
             self.execution.rm.set_cancel_all()
