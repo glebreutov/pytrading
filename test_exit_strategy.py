@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from exit_strategy import stop_loss_exit_strategy
-from instant_sumulator import simulator_env
+from instant_simulator import simulator_env
 from mmparams import MMParams
 from orders import Ack
 from posmath.position import Position
