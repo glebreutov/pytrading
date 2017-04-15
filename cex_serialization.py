@@ -148,3 +148,19 @@ def balance():
     })
 
 
+def subscribe_tickers():
+    return json.dumps({
+        "e": "subscribe",
+        "rooms": [
+            "tickers"
+        ]
+    })
+
+
+def subscribe_tickers_old():
+    return json.dumps({
+            "e": "subscribe",
+            "rooms": ["pair-BTC-USD"]
+        })
+
+

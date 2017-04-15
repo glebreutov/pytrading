@@ -183,7 +183,7 @@ class OrderManager:
         if tx.order_id in self.by_order_id.keys():
             order = self.by_order_id[tx.order_id]
         elif tx.oid is not None and tx.oid in self.by_oid.keys():
-            order = self.by_oid[tx.order_id]
+            order = self.by_oid[tx.oid]
         else:
             raise UnknownExec
         delta = order.amount - abs(tx.remains)
@@ -237,36 +237,6 @@ class OrderManager:
                 self.remove_request(ev)
 
 
-class RiskManager:
-    NORMAL = "NORMAL"
-    CANCEL_ALL = "CANCEL_ALL"
-    EXIT_ONLY = "EXIT_ONLY"
-
-    def __init__(self, broker: Broker, event_hub: EventHub):
-        self.event_hub = event_hub
-        self.broker = broker
-        self.status = RiskManager.CANCEL_ALL
-
-    def set_normal(self):
-        self.status = RiskManager.NORMAL
-        self.event_hub.rm_event(self.status)
-
-    def set_cancel_all(self):
-        self.status = RiskManager.CANCEL_ALL
-        self.event_hub.rm_event(self.status)
-        self.broker.cancel_all()
-
-    def trading_allowed(self):
-        return self.status == RiskManager.NORMAL
-
-    def set_exit_only(self):
-        self.status = RiskManager.EXIT_ONLY
-        self.event_hub.rm_event(self.status)
-
-    def exit_only(self):
-        return self.status == RiskManager.EXIT_ONLY
-
-
 class Broker:
     def __init__(self, om: OrderManager):
         self.om = om
@@ -313,6 +283,32 @@ class Broker:
             return self.orders.side(side)[tag]
         return None
 
-class PosBroker:
-    def request(self, req):
-        pass
+
+class RiskManager:
+    NORMAL = "NORMAL"
+    CANCEL_ALL = "CANCEL_ALL"
+    EXIT_ONLY = "EXIT_ONLY"
+
+    def __init__(self, broker: Broker, event_hub: EventHub):
+        self.event_hub = event_hub
+        self.broker = broker
+        self.status = RiskManager.CANCEL_ALL
+
+    def set_normal(self):
+        self.status = RiskManager.NORMAL
+        self.event_hub.rm_event(self.status)
+
+    def set_cancel_all(self):
+        self.status = RiskManager.CANCEL_ALL
+        self.event_hub.rm_event(self.status)
+        self.broker.cancel_all()
+
+    def trading_allowed(self):
+        return self.status == RiskManager.NORMAL
+
+    def set_exit_only(self):
+        self.status = RiskManager.EXIT_ONLY
+        self.event_hub.rm_event(self.status)
+
+    def exit_only(self):
+        return self.status == RiskManager.EXIT_ONLY
