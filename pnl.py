@@ -51,9 +51,10 @@ class PNL:
             return Decimal('0')
         exit_side = Side.opposite_side(self.position())
         take_price = self.nbbo.side(Side.side(self.position()))
+        take_order = self.pos + Position(pos=self.pos.abs_position(), price=take_price, side=exit_side)
+        final_pos = self.pos + take_order + take_order.fee_pos(self.fee)
 
-        balance = (self.pos + Position(pos=self.pos.abs_position(), price=take_price, side=exit_side)).balance
-        return balance - abs(balance) / Decimal('100') * self.fee
+        return final_pos.balance
 
     def position_zero_price(self):
         if self.abs_position() == 0:

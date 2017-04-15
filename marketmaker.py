@@ -78,8 +78,7 @@ class Marketmaker:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
         if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.ENTER_TAG):
 
-            position = Position(pos=self.engine.pnl.position(), balance=self.engine.pnl.balance())
-            exit_position, method = stop_loss_exit_strategy(self.engine.book, position, self.config)
+            exit_position, method = stop_loss_exit_strategy(self.engine.book, self.engine.pnl, self.config)
             if self.engine.pnl.abs_position() >= self.config.min_order_size:
                 self.engine.execution.request(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                               str(exit_position.abs_position()))

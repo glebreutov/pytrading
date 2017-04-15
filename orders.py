@@ -30,7 +30,8 @@ class ReplaceReq(NewReq):
 
 
 class Exec:
-    def __init__(self, remains, order_id):
+    def __init__(self, remains, order_id, oid=None):
+        self.oid = oid
         self.order_id = order_id
         self.remains = remains
         self.fee = Decimal('0')
@@ -105,6 +106,10 @@ class NegativeAmountAfterExec(Exception):
     pass
 
 
+class UnknownExec(Exception):
+    pass
+
+
 class OrderManager:
     def __init__(self):
         self.by_order_id = {}
@@ -174,9 +179,13 @@ class OrderManager:
         del self.by_order_id[canc.order_id]
 
     def on_execution(self, tx: Exec):
-        if tx.order_id not in self.by_order_id.keys():
-            raise UnknownOrderId
-        order = self.by_order_id[tx.order_id]
+        order = None
+        if tx.order_id in self.by_order_id.keys():
+            order = self.by_order_id[tx.order_id]
+        elif tx.oid is not None and tx.oid in self.by_oid.keys():
+            order = self.by_oid[tx.order_id]
+        else:
+            raise UnknownExec
         delta = order.amount - abs(tx.remains)
         order.amount = abs(tx.remains)
         tx.side = order.side

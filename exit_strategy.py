@@ -22,17 +22,17 @@ def calc_price_for_depth(quote: Level, liq_behind):
 # agressive order is to place on B
 
 
-def stop_loss_exit_strategy(book: Book, pos: Position, config: MMParams):
+def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams):
     def volume_behind_order(min_pos: Position):
         sign = Side.sign(min_pos.side())
         return sum([level.volume() for level in book.quote(min_pos.side())
                     if sign * level.price > sign * min_pos.price()])
-
+    pos = pnl.pos
     price = calc_price_between_levels(book.quote(Side.opposite(pos.side())), config.liq_behind_exit, Decimal('0.0001'))
     add_pos = pos.oppoiste_with_price(price)
     min_margin = pos.opposite_with_margin(config.min_profit)
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-    if (pos + remove_pos).balance > abs((remove_pos.balance / 100) * Decimal('0.18')):
+    if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
         return remove_pos, "REMOVE"
     if (pos + add_pos).balance > 0:
         return add_pos, "QUOTE"

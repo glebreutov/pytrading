@@ -104,7 +104,7 @@ def deserialize_order_event(event, parsed):
 
     if "complete" in parsed['data'] and parsed['data']['complete'] is True:
         return Exec(Decimal('0'),
-                    str(parsed['data']['id']))
+                    str(parsed['data']['id']), parsed['oid'])
     elif event == "place-order":
         return Ack(parsed['oid'],
                    str(parsed['data']['id']),
