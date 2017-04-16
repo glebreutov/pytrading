@@ -44,7 +44,7 @@ class PNL:
     def nbbo_pnl(self):
         exit_side = Side.opposite_side(self.position())
         nbbo_price = self.nbbo.side(exit_side)
-        return (self.pos + Position(pos=self.pos.abs_position(), price=nbbo_price, side=exit_side)).balance
+        return (self.pos + Position(pos=self.pos.abs_position(), price=nbbo_price, side=exit_side)).balance - self.closed_pnl
 
     def take_pnl(self):
         if self.pos.position() == 0:
@@ -54,7 +54,7 @@ class PNL:
         take_order = Position(pos=self.pos.abs_position(), price=take_price, side=exit_side)
         take_pos = self.pos + take_order + take_order.fee_pos(self.fee)
 
-        return take_pos.balance
+        return take_pos.balance - self.closed_pnl
 
     def position_zero_price(self):
         if self.abs_position() == 0:

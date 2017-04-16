@@ -62,12 +62,16 @@ async def hello():
 
         greeting = await websocket.recv()
         print(greeting)
-        await websocket.send(balance())
+
         await websocket.send(subscribe_msg(config['asset']['crypto'], config['asset']['currency']))
+        last_heartbeat_time = 0
         while True:
             data = await websocket.recv()
             await tick(websocket, data)
-
+            # check socket
+            if time.time() - last_heartbeat_time >= 60:
+                await websocket.send(balance())
+                last_heartbeat_time = time.time()
 
 async def tick(websocket, data):
     parsed = json.loads(data)
