@@ -1,6 +1,6 @@
 import json
 import uuid
-from _decimal import Decimal
+from decimal import Decimal
 from enum import Enum
 
 from mm.event_hub import EventHub, ImportantEvent
@@ -19,8 +19,8 @@ class CancelReq:
 class NewReq(CancelReq):
     def __init__(self, side, price: Decimal, size):
         super().__init__(side, -1)
-        self.price = price
-        self.size = size
+        self.price = Decimal(price)
+        self.size = Decimal(size)
 
 
 class ReplaceReq(NewReq):
@@ -179,30 +179,39 @@ class OrderManager:
         del self.by_order_id[canc.order_id]
 
     def on_execution(self, tx: Exec):
-        order = None
+        def update_order(order):
+            delta = order.amount - abs(tx.remains)
+            order.amount = abs(tx.remains)
+            tx.side = order.side
+            tx.price = order.price
+            tx.delta = delta
+            if order.amount <= 0:
+                order.status = OrderStatus.COMPLETED
+            if order.amount < 0:
+                raise NegativeAmountAfterExec
+
         if tx.order_id in self.by_order_id.keys():
             order = self.by_order_id[tx.order_id]
+            update_order(order)
+            if order.amount <= 0:
+                del self.by_order_id[tx.order_id]
         elif tx.oid is not None and tx.oid in self.by_oid.keys():
             order = self.by_oid[tx.oid]
+            update_order(order)
+            if order.amount <= 0:
+                del self.by_oid[tx.oid]
         else:
             raise UnknownExec
-        delta = order.amount - abs(tx.remains)
-        order.amount = abs(tx.remains)
-        tx.side = order.side
-        tx.price = order.price
-        tx.delta = delta
-        if order.amount <= 0:
-            order.status = OrderStatus.COMPLETED
-            del self.by_order_id[tx.order_id]
-        if order.amount < 0:
-            raise NegativeAmountAfterExec
 
     def remove_request(self, ev):
         if ev.oid not in self.by_oid:
             print("remove_request: no order for oid " + str(ev.oid))
             return
         order = self.by_oid[ev.oid]
-        order.status = OrderStatus.ACK
+        if order.status == OrderStatus.NEW:
+            order.status = OrderStatus.COMPLETED
+        elif order.status == OrderStatus.REQ_SENT:
+            order.status = OrderStatus.ACK
         del self.by_oid[ev.oid]
 
     def remove_order(self, ev):
