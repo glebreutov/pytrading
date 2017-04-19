@@ -27,7 +27,7 @@ class Config:
 
 
 def logname(dirname: str):
-    return dirname+'/orders_'+str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))+'.log'
+    return dirname+'/orders_'+str(time.strftime("%Y-%m-%d_%H%M%S", time.localtime()))+'.log'
 
 config_file = 'config.json' if len(sys.argv) < 2 else sys.argv[1]
 
