@@ -179,15 +179,15 @@ class OrderManager:
         del self.by_order_id[canc.order_id]
 
     def on_execution(self, tx: Exec):
-        def update_order(order):
-            delta = order.amount - abs(tx.remains)
-            order.amount = abs(tx.remains)
-            tx.side = order.side
-            tx.price = order.price
+        def update_order(ordr):
+            delta = Decimal(ordr.amount) - abs(tx.remains)
+            ordr.amount = abs(tx.remains)
+            tx.side = ordr.side
+            tx.price = ordr.price
             tx.delta = delta
-            if order.amount <= 0:
-                order.status = OrderStatus.COMPLETED
-            if order.amount < 0:
+            if ordr.amount <= 0:
+                ordr.status = OrderStatus.COMPLETED
+            if ordr.amount < 0:
                 raise NegativeAmountAfterExec
 
         if tx.order_id in self.by_order_id.keys():

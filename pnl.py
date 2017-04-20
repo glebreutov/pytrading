@@ -21,7 +21,7 @@ class PNL:
             self.pos += exec_pos + exec_pos.fee_pos(tx.fee)
 
         if self.pos.position() == 0:
-            self.closed_pnl += self.pos.balance
+            self.closed_pnl = self.pos.balance
 
     def position(self):
         return self.pos.position()
@@ -36,7 +36,7 @@ class PNL:
         return self.pos.balance
 
     def open_pnl(self):
-        return self.balance() + self.position() * self.exit_price
+        return self.balance() + - self.closed_pnl + self.position() * self.exit_price
 
     def update_open_pnl(self, exit_price):
         self.exit_price = exit_price

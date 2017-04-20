@@ -53,7 +53,7 @@ def serialize_request(req, crypto="BTC", currency="USD"):
                     crypto,
                     currency
                 ],
-                "amount": req.size,
+                "amount": str(req.size),
                 "price": str(req.price),
                 "type": serialize_side(req.side)
             },
@@ -68,7 +68,7 @@ def serialize_request(req, crypto="BTC", currency="USD"):
                     crypto,
                     currency
                 ],
-                "amount": req.size,
+                "amount": str(req.size),
                 "price": str(req.price),
                 "type": serialize_side(req.side)
             },

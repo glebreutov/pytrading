@@ -58,8 +58,8 @@ def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams):
     add_pos = pos.oppoiste_with_price(price)
     min_margin = pos.opposite_with_margin(config.min_profit)
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-    if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
-        return remove_pos, "REMOVE"
+    # if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
+    #     return remove_pos, "REMOVE"
     if (pos + add_pos).balance > pnl.closed_pnl:
         return add_pos, "QUOTE"
     # elif volume_behind_order(min_margin) >= config.buried_volume:
