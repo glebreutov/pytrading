@@ -34,7 +34,8 @@ def serialize_pnl(pnl: PNL):
                        'open P&L': str(pnl.open_pnl()),
                        'nbbo P&L': str(pnl.nbbo_pnl()),
                        'take P&L': str(pnl.take_pnl()),
-                       'method': str(pnl.exit_method())
+                       'method': str(pnl.exit_method()),
+                       'ema': str(pnl.ema)
                                                }})
 
 
