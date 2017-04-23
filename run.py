@@ -12,7 +12,7 @@ from websockets import ConnectionClosed
 from websockets import InvalidHandshake
 
 from mm.event_hub import ImportantLogger
-from mm.cex_serialization import auth_request, subscribe_msg, serialize_request, open_orders, balance, \
+from mm.cex_serialization import auth_request, subscribe_to_book, serialize_request, open_orders, balance, \
     deserialize_order_event
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
     serialize_important_events
@@ -63,7 +63,7 @@ async def hello():
         greeting = await websocket.recv()
         print(greeting)
 
-        await websocket.send(subscribe_msg(config['asset']['crypto'], config['asset']['currency']))
+        await websocket.send(subscribe_to_book(config['asset']['crypto'], config['asset']['currency'], 20))
         last_heartbeat_time = 0
         while True:
             data = await websocket.recv()
