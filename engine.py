@@ -98,5 +98,5 @@ class Engine:
             self.event_hub.order_error('NegativeAmountAfterExec')
             self.rm.set_cancel_all()
         except UnknownExec:
-            self.event_hub.order_error('UnknownExec order_id: '+ev.order_id + ' oid: '+ev.oid)
+            self.event_hub.order_error('UnknownExec order_id: '+str(ev))
             self.rm.set_cancel_all()

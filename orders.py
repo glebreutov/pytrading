@@ -39,6 +39,19 @@ class Exec:
         self.delta = 0
         self.price = 0
 
+    def __str__(self):
+        exec_ = "Exec oid: " + str(self.oid) \
+                + " order_id: " + str(self.order_id) \
+                + " remains: " + str(self.remains) \
+                + "fee: " + str(self.fee) \
+                + " side: " + str(self.side) \
+                + " delta: " + str(self.delta) \
+                + " price: " + str(self.price)
+
+        return exec_
+
+# print(Exec(Decimal('0'), Decimal('12345')))
+# print(Exec(Decimal('0'), Decimal('12345'), Decimal('3645647586')))
 
 class Ack:
     def __init__(self, oid, order_id, pending, amount):
