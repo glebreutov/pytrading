@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import time
+
 from mm.exit_strategy import calc_price, calc_price_between_levels, price_on_a_depth
 from mm.event_hub import ImportantEvent
 from mm.exit_strategy import stop_loss_exit_strategy
@@ -26,9 +28,10 @@ class Marketmaker:
     EXIT_TAG = 1
 
     def __init__(self, engine, config):
+        self.last_updated_time = time.time()
         self.engine = engine
         self.config = MMParams(config)
-        engine.book.quote_subscribers.append(self)
+        # engine.book.quote_subscribers.append(self)
 
     def book_is_valid(self):
         bid_quote = self.engine.book.quote(Side.BID)
@@ -44,20 +47,24 @@ class Marketmaker:
         return (bo is None or bo.status == OrderStatus.COMPLETED) \
                and (so is None or so.status == OrderStatus.COMPLETED)
 
-    def enter_market(self):
-        def price_changed(tag, side, new_price):
-            order = self.engine.execution.order(tag, side)
-            if order is None:
-                return True
+    def price_changed(self, tag, side, new_price, size):
+        order = self.engine.execution.order(tag, side)
+        if order is None or order.status == OrderStatus.COMPLETED:
+            return True
 
-            return abs(order.price - new_price) > self.config.price_tolerance
+        if order.amount != size:
+            return True
+
+        return abs(order.price - new_price) > self.config.price_tolerance
+
+    def enter_market(self):
 
         for side in Side.sides:
             if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.EXIT_TAG):
                 self.engine.execution.order(Marketmaker.ENTER_TAG, side)
                 size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
                 price = price_on_a_depth(self.engine.book.quote(side), self.config.liq_behind_entry.side(side), size)
-                if price_changed(Marketmaker.ENTER_TAG, side, price) and size >= self.config.min_order_size:
+                if self.price_changed(Marketmaker.ENTER_TAG, side, price, size) and size >= self.config.min_order_size:
                     self.engine.execution.request(
                         tag=Marketmaker.ENTER_TAG,
                         side=side,
@@ -77,13 +84,16 @@ class Marketmaker:
         if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.ENTER_TAG):
 
             exit_position, method = stop_loss_exit_strategy(self.engine.book, self.engine.pnl, self.config)
-            if self.engine.pnl.abs_position() >= self.config.min_order_size:
+            price_or_size = self.price_changed(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
+                                               exit_position.abs_position())
+            if self.engine.pnl.abs_position() >= self.config.min_order_size \
+                    and price_or_size:
                 self.engine.execution.request(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                               str(exit_position.abs_position()))
                 self.engine.pnl.update_open_pnl(exit_position.price())
                 self.engine.pnl.set_exit_method(method)
 
-    def tick(self):
+    def on_tick(self):
         risk_status = self.engine.rm.status
         if risk_status == RiskManager.CANCEL_ALL:
             self.engine.execution.cancel_all()
@@ -95,11 +105,16 @@ class Marketmaker:
             else:
                 self.exit_market()
 
-    def quote_changed(self, side):
-        self.tick()
+    # def quote_changed(self, side):
+    #     self.on_tick()
+
+    def on_md(self):
+        if time.time() - self.last_updated_time >= 1:
+            self.on_tick()
+            self.last_updated_time = time.time()
 
     def on_exec(self, details):
-        self.tick()
+        self.on_tick()
 
     def important_event(self, ev: ImportantEvent):
         if ev.event_name == ImportantEvent.GAP:

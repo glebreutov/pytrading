@@ -253,10 +253,14 @@ class OrderManager:
         elif type_ev == Exec:
             self.on_execution(ev)
         elif type_ev == ErrorRequest:
-            if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
-                self.remove_order(ev)
-            else:
-                self.remove_request(ev)
+            # new
+            # repl
+            # canc
+            self.remove_request(ev)
+            # if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
+            #     self.remove_order(ev)
+            # else:
+            #     self.remove_request(ev)
 
 
 class Broker:

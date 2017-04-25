@@ -53,7 +53,8 @@ class Engine:
         if self.book.is_valid():
 
             if hasattr(self.algo, 'on_md'):
-                self.algo.on_md(md)
+                self.algo.on_md()
+
 
     def on_exec(self, details):
         if hasattr(self.algo, 'on_exec'):

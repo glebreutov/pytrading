@@ -7,6 +7,14 @@ from posmath.position import Position
 from posmath.side import Side
 
 
+def price_not_better_than(calc_price, ema_price, side):
+    sign = (calc_price - ema_price) / abs(calc_price - ema_price)
+    if sign == Side.sign(side):
+        return ema_price
+    else:
+        return calc_price
+
+
 def price_on_a_depth(top_quote, liq_behind, size, min_step=Decimal('0.0001')):
     quote_array = []
     quote_liq = Decimal('0')
