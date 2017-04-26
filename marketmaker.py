@@ -77,13 +77,15 @@ class Marketmaker:
                 self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
     def exit_market(self):
-        # print("placing exit order")
+        def should_loss():
+            return self.engine.rm.loss_flag_time > self.engine.pnl.zero_position_time
 
         for side in Side.sides:
             self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
         if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.ENTER_TAG):
 
-            exit_position, method = stop_loss_exit_strategy(self.engine.book, self.engine.pnl, self.config)
+            exit_position, method = stop_loss_exit_strategy(self.engine.book, self.engine.pnl,
+                                                            self.config, should_loss())
             price_or_size = self.price_changed(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                                exit_position.abs_position())
             if self.engine.pnl.abs_position() >= self.config.min_order_size \

@@ -1,3 +1,5 @@
+import time
+
 from posmath.position import Position
 from posmath.side import Side
 from decimal import Decimal
@@ -16,6 +18,7 @@ class PNL:
         self.exit_price = Decimal('0')
         self.fee = Decimal(fee)
         self.ema = 0
+        self.zero_position_time = time.time()
 
     def execution(self, tx: Exec):
         exec_pos = Position(pos=tx.delta, price=tx.price, side=tx.side)
@@ -25,6 +28,7 @@ class PNL:
         if self.pos.position() == 0:
             self.closed_pnl += self.pos.balance
             self.pos = Position(0, 0)
+            self.zero_position_time = time.time()
             # self.clean_closed_pnl += self.closed_pnl
             # self.closed_pnl = 0
 

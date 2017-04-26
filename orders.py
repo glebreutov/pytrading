@@ -319,6 +319,7 @@ class RiskManager:
         self.event_hub = event_hub
         self.broker = broker
         self.status = RiskManager.CANCEL_ALL
+        self.loss_flag_time = 0
 
     def set_normal(self):
         self.status = RiskManager.NORMAL

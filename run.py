@@ -108,6 +108,8 @@ def consumer(msg):
         engine.rm.set_cancel_all()
     elif new_status == 'NORMAL':
         engine.rm.set_normal()
+    elif new_status == 'LOOSE_ONCE':
+        engine.rm.loss_flag_time = time.time()
     else:
         print("unknown RM status" + msg)
 
