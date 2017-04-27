@@ -26,7 +26,7 @@ def password_encode(timestamp, password):
     return hashlib.new("sha256", string.encode()).hexdigest()  # change to hmac once figured out how to use it on client
 
 
-def subscribe_to_book(crypto="BTC", currency="USD", depth=10)::
+def subscribe_to_book(crypto="BTC", currency="USD", depth=10):
     return json.dumps({
         "e": "order-book-subscribe",
         "data": {
