@@ -21,6 +21,11 @@ def auth_request(key, secret):
                        'auth': {'key': key, 'signature': signature, 'timestamp': timestamp, }, 'oid': 'auth', })
 
 
+def password_encode(timestamp, password):
+    string = "{}{}".format(timestamp, password)
+    return hashlib.new("sha256", string.encode()).hexdigest()  # change to hmac once figured out how to use it on client
+
+
 def subscribe_msg(crypto="BTC", currency="USD"):
     return json.dumps({
         "e": "order-book-subscribe",

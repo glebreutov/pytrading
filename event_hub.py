@@ -34,7 +34,7 @@ class ImportantLogger:
         logging.basicConfig(filename=self.logname(logdir), level=logging.WARNING)
 
     def logname(self, dirname: str):
-        return dirname + '/important_' + str(time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())) + '.log'
+        return dirname + '/important_' + str(time.strftime("%Y-%m-%d_%H%M%S", time.localtime())) + '.log'
 
     def important_event(self, ev):
         logging.warning(ev)
