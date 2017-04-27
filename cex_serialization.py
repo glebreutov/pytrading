@@ -26,7 +26,7 @@ def password_encode(timestamp, password):
     return hashlib.new("sha256", string.encode()).hexdigest()  # change to hmac once figured out how to use it on client
 
 
-def subscribe_msg(crypto="BTC", currency="USD"):
+def subscribe_to_book(crypto="BTC", currency="USD", depth=10)::
     return json.dumps({
         "e": "order-book-subscribe",
         "data": {
@@ -35,7 +35,7 @@ def subscribe_msg(crypto="BTC", currency="USD"):
                 currency
             ],
             "subscribe": True,
-            "depth": 10
+            "depth": depth
         },
         "oid": "1435927928274_3_order-book-subscribe"
     })
@@ -58,7 +58,7 @@ def serialize_request(req, crypto="BTC", currency="USD"):
                     crypto,
                     currency
                 ],
-                "amount": req.size,
+                "amount": str(req.size),
                 "price": str(req.price),
                 "type": serialize_side(req.side)
             },
@@ -73,7 +73,7 @@ def serialize_request(req, crypto="BTC", currency="USD"):
                     crypto,
                     currency
                 ],
-                "amount": req.size,
+                "amount": str(req.size),
                 "price": str(req.price),
                 "type": serialize_side(req.side)
             },
@@ -109,7 +109,7 @@ def deserialize_order_event(event, parsed):
 
     if "complete" in parsed['data'] and parsed['data']['complete'] is True:
         return Exec(Decimal('0'),
-                    str(parsed['data']['id']), parsed['oid'])
+                    str(parsed['data']['id']), str(parsed['oid']))
     elif event == "place-order":
         return Ack(parsed['oid'],
                    str(parsed['data']['id']),

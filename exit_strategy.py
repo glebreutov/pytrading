@@ -7,6 +7,14 @@ from posmath.position import Position
 from posmath.side import Side
 
 
+def price_not_better_than(calc_price, ema_price, side):
+    sign = (calc_price - ema_price) / abs(calc_price - ema_price)
+    if sign == Side.sign(side):
+        return ema_price
+    else:
+        return calc_price
+
+
 def price_on_a_depth(top_quote, liq_behind, size, min_step=Decimal('0.0001')):
     quote_array = []
     quote_liq = Decimal('0')
@@ -44,7 +52,7 @@ def calc_price_for_depth(quote: Level, liq_behind):
 # agressive order is to place on B
 
 
-def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams):
+def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams, loss=False):
     def volume_behind_order(min_pos: Position):
         sign = Side.sign(min_pos.side())
         return sum([level.volume() for level in book.quote(min_pos.side())
@@ -58,9 +66,9 @@ def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams):
     add_pos = pos.oppoiste_with_price(price)
     min_margin = pos.opposite_with_margin(config.min_profit)
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
-    if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
-        return remove_pos, "REMOVE"
-    if (pos + add_pos).balance > pnl.closed_pnl:
+    # if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
+    #     return remove_pos, "REMOVE"
+    if (pos + add_pos).balance > 0 or loss:
         return add_pos, "QUOTE"
     # elif volume_behind_order(min_margin) >= config.buried_volume:
     #     return add_pos, "STOP LOSS"

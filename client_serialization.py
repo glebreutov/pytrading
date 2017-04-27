@@ -21,7 +21,7 @@ def serialize_book(book: Book):
 
 
 def serialize_orders(om: OrderManager):
-    order_dump = [[str(x.price), str(x.pending), str(x.side)] for x in om.by_order_id.values()
+    order_dump = [[str(x.price), str(x.amount), str(x.side)] for x in om.by_order_id.values()
                   if x.status != OrderStatus.COMPLETED]
     return json.dumps({"e": "orders", "details": order_dump})
 
@@ -34,7 +34,8 @@ def serialize_pnl(pnl: PNL):
                        'open P&L': str(pnl.open_pnl()),
                        'nbbo P&L': str(pnl.nbbo_pnl()),
                        'take P&L': str(pnl.take_pnl()),
-                       'method': str(pnl.exit_method())
+                       'method': str(pnl.exit_method()),
+                       'ema': str(pnl.ema)
                                                }})
 
 

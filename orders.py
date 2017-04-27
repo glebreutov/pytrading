@@ -1,6 +1,6 @@
 import json
 import uuid
-from _decimal import Decimal
+from decimal import Decimal
 from enum import Enum
 
 from mm.event_hub import EventHub, ImportantEvent
@@ -19,8 +19,8 @@ class CancelReq:
 class NewReq(CancelReq):
     def __init__(self, side, price: Decimal, size):
         super().__init__(side, -1)
-        self.price = price
-        self.size = size
+        self.price = Decimal(price)
+        self.size = Decimal(size)
 
 
 class ReplaceReq(NewReq):
@@ -39,6 +39,19 @@ class Exec:
         self.delta = 0
         self.price = 0
 
+    def __str__(self):
+        exec_ = "Exec oid: " + str(self.oid) \
+                + " order_id: " + str(self.order_id) \
+                + " remains: " + str(self.remains) \
+                + "fee: " + str(self.fee) \
+                + " side: " + str(self.side) \
+                + " delta: " + str(self.delta) \
+                + " price: " + str(self.price)
+
+        return exec_
+
+# print(Exec(Decimal('0'), Decimal('12345')))
+# print(Exec(Decimal('0'), Decimal('12345'), Decimal('3645647586')))
 
 class Ack:
     def __init__(self, oid, order_id, pending, amount):
@@ -179,30 +192,39 @@ class OrderManager:
         del self.by_order_id[canc.order_id]
 
     def on_execution(self, tx: Exec):
-        order = None
+        def update_order(ordr):
+            delta = Decimal(ordr.amount) - abs(tx.remains)
+            ordr.amount = abs(tx.remains)
+            tx.side = ordr.side
+            tx.price = ordr.price
+            tx.delta = delta
+            if ordr.amount <= 0:
+                ordr.status = OrderStatus.COMPLETED
+            if ordr.amount < 0:
+                raise NegativeAmountAfterExec
+
         if tx.order_id in self.by_order_id.keys():
             order = self.by_order_id[tx.order_id]
+            update_order(order)
+            if order.amount <= 0:
+                del self.by_order_id[tx.order_id]
         elif tx.oid is not None and tx.oid in self.by_oid.keys():
             order = self.by_oid[tx.oid]
+            update_order(order)
+            if order.amount <= 0:
+                del self.by_oid[tx.oid]
         else:
             raise UnknownExec
-        delta = order.amount - abs(tx.remains)
-        order.amount = abs(tx.remains)
-        tx.side = order.side
-        tx.price = order.price
-        tx.delta = delta
-        if order.amount <= 0:
-            order.status = OrderStatus.COMPLETED
-            del self.by_order_id[tx.order_id]
-        if order.amount < 0:
-            raise NegativeAmountAfterExec
 
     def remove_request(self, ev):
         if ev.oid not in self.by_oid:
             print("remove_request: no order for oid " + str(ev.oid))
             return
         order = self.by_oid[ev.oid]
-        order.status = OrderStatus.ACK
+        if order.status == OrderStatus.NEW:
+            order.status = OrderStatus.COMPLETED
+        elif order.status == OrderStatus.REQ_SENT:
+            order.status = OrderStatus.ACK
         del self.by_oid[ev.oid]
 
     def remove_order(self, ev):
@@ -231,10 +253,14 @@ class OrderManager:
         elif type_ev == Exec:
             self.on_execution(ev)
         elif type_ev == ErrorRequest:
-            if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
-                self.remove_order(ev)
-            else:
-                self.remove_request(ev)
+            # new
+            # repl
+            # canc
+            self.remove_request(ev)
+            # if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
+            #     self.remove_order(ev)
+            # else:
+            #     self.remove_request(ev)
 
 
 class Broker:
@@ -293,6 +319,7 @@ class RiskManager:
         self.event_hub = event_hub
         self.broker = broker
         self.status = RiskManager.CANCEL_ALL
+        self.loss_flag_time = 0
 
     def set_normal(self):
         self.status = RiskManager.NORMAL

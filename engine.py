@@ -53,7 +53,8 @@ class Engine:
         if self.book.is_valid():
 
             if hasattr(self.algo, 'on_md'):
-                self.algo.on_md(md)
+                self.algo.on_md()
+
 
     def on_exec(self, details):
         if hasattr(self.algo, 'on_exec'):
@@ -98,5 +99,5 @@ class Engine:
             self.event_hub.order_error('NegativeAmountAfterExec')
             self.rm.set_cancel_all()
         except UnknownExec:
-            self.event_hub.order_error('UnknownExec')
+            self.event_hub.order_error('UnknownExec order_id: '+str(ev))
             self.rm.set_cancel_all()
