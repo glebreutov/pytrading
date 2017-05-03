@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
+import Sha from 'sha.js'
 import BookDisplay, {toLevel} from './BookDisplay'
 import Table from './Table'
 import KV from './KV'
@@ -35,6 +36,7 @@ const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
 const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
 const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
+const sendAuth = (timestamp) => send({'e': 'auth', 'login': 'test', 'password': Sha('sha256').update(timestamp+'test').digest('hex')})
 
 // Connection opened
 socket.addEventListener('open', () => {
@@ -50,6 +52,9 @@ socket.addEventListener('message', function processEvent (event) {
   } catch (e) {
     debugger;
     return
+  }
+  if (msg.e === 'auth') {
+      sendAuth(msg.timestamp)
   }
   if (msg.e === 'book') {
     bookData.bookLevels = [].concat(

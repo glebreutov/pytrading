@@ -14,7 +14,7 @@ from websockets import InvalidHandshake
 from mm.app_config import load_config
 from mm.event_hub import ImportantLogger
 from mm.cex_serialization import auth_request, subscribe_to_book, serialize_request, open_orders, balance, \
-    deserialize_order_event
+    deserialize_order_event, password_encode
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
     serialize_important_events
 from mm.engine import Engine
@@ -105,6 +105,17 @@ def consumer(msg):
         print("unknown RM status" + msg)
 
 
+def client_auth(timestamp, msg):
+    print("Authentication " + msg)
+
+    auth = json.loads(msg)
+    if auth["e"] == "auth":
+        password = config['accounts'][auth['login']]
+        return password_encode(timestamp, password) == auth['password']
+    else:
+        return False
+
+
 async def sender():
     await asyncio.sleep(1)
     execution_count = len(engine.execution_sink)
@@ -116,6 +127,14 @@ async def sender():
 
 
 async def handler(websocket, path):
+    authenticated = False
+    while not authenticated:
+        timestamp = int(datetime.datetime.now().timestamp())    # UNIX timestamp in seconds
+        await websocket.send(json.dumps(
+            {'e': 'auth', 'timestamp': timestamp}))             # send timestamp to client.
+        auth = await websocket.recv()                           # listen for login and hash of password
+        authenticated = client_auth(timestamp, auth)            # check credentials
+
     while True:
         listener_task = asyncio.ensure_future(websocket.recv())
         producer_task = asyncio.ensure_future(sender())
