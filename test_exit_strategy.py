@@ -1,8 +1,8 @@
 from decimal import Decimal
 
-from exit_strategy import stop_loss_exit_strategy
+from app_config import MarketmakerConfig
+from order_algos import stop_loss_exit_strategy
 from instant_simulator import simulator_env
-from mmparams import MMParams
 from orders import Ack
 from posmath.position import Position
 from posmath.side import Side
@@ -11,7 +11,7 @@ from printout import print_book_and_orders
 
 def stop_loss_test_case(book, pandl, broker):
     def test_case(pos):
-        config = MMParams({
+        config = MarketmakerConfig({
             "min_levels": "5",
             "liq_behind_exit": "0.02",
             "liq_behind_entry": {"BID": "0.41", "ASK": "0.41"},

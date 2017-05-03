@@ -5,6 +5,8 @@ import decimal
 
 import time
 
+from mm.app_config import AppConfig
+
 from mm.client import ClientEventHandler
 from mm.event_hub import EventHub
 from mm.book import Book
@@ -17,14 +19,15 @@ from mm.printout import print_book_and_orders
 
 
 class Engine:
-    def __init__(self, algo_class, algo_config):
+    def __init__(self, algo_class, config: AppConfig):
+        self.config = config
         self.event_log = ClientEventHandler()
         self.order_manager = OrderManager()
         self.book = Book()
-        self.pnl = PNL(algo_config['venue']['taker_comission_percent'])
+        self.pnl = PNL(config.venue.taker_comission_percent)
         self.book.quote_subscribers.append(self.pnl)
         self.execution = Broker(self.order_manager)
-        self.algo = algo_class(self, algo_config['marketmaker'])
+        self.algo = algo_class(self)
         self.execution_sink = []
         self.snapid = -1
         self.event_hub = EventHub()
@@ -54,7 +57,6 @@ class Engine:
 
             if hasattr(self.algo, 'on_md'):
                 self.algo.on_md()
-
 
     def on_exec(self, details):
         if hasattr(self.algo, 'on_exec'):

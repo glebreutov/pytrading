@@ -11,6 +11,7 @@ import time
 from websockets import ConnectionClosed
 from websockets import InvalidHandshake
 
+from mm.app_config import load_config
 from mm.event_hub import ImportantLogger
 from mm.cex_serialization import auth_request, subscribe_to_book, serialize_request, open_orders, balance, \
     deserialize_order_event
@@ -20,27 +21,17 @@ from mm.engine import Engine
 from mm.marketmaker import Marketmaker
 
 
-class Config:
-    url = None
-    key = None
-    secret = None
-
 
 def logname(dirname: str):
     return dirname+'/orders_'+str(time.strftime("%Y-%m-%d_%H%M%S", time.localtime()))+'.log'
 
 config_file = 'config.json' if len(sys.argv) < 2 else sys.argv[1]
 
-with open(config_file, 'r') as f:
-    config = json.load(f)
-    Config.url = config['venue']['url']
-    Config.key = config['venue']['key']
-    Config.secret = config['venue']['secret']
-    logging.basicConfig(filename=logname(config['logging']['dir']), level=config['logging']['level'])
+config = load_config(config_file)
 
 engine = Engine(Marketmaker, config)
 
-engine.event_hub.subscribe(ImportantLogger(config['logging']['dir']))
+engine.event_hub.subscribe(ImportantLogger(config.logging.dir))
 
 
 async def reconnect():
@@ -53,17 +44,17 @@ async def reconnect():
         await reconnect()
 
 async def hello():
-    async with websockets.connect(Config.url) as websocket:
+    async with websockets.connect(config.venue.url) as websocket:
         greeting = await websocket.recv()
         print(greeting)
-        req = auth_request(Config.key, Config.secret)
+        req = auth_request(config.venue.key, config.venue.secret)
         await websocket.send(req)
         print("> {}".format(req))
 
         greeting = await websocket.recv()
         print(greeting)
 
-        await websocket.send(subscribe_to_book(config['asset']['crypto'], config['asset']['currency'], 20))
+        await websocket.send(subscribe_to_book(config.asset.crypto,config.asset.currency, 20))
         last_heartbeat_time = 0
         while True:
             data = await websocket.recv()
@@ -96,7 +87,7 @@ async def tick(websocket, data):
 
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
-        sreq = serialize_request(req, config['asset']['crypto'], config['asset']['currency'])
+        sreq = serialize_request(req,config.asset.crypto, config.asset.currency)
         logging.info("{\"out\":" + sreq + "}")
         await websocket.send(sreq)
 
@@ -149,8 +140,8 @@ async def handler(websocket, path):
 
 loop = asyncio.get_event_loop()
 
-if config['client']['enabled']:
-    start_server = websockets.serve(handler, '0.0.0.0', config['client']['port'])
+if config.client.enabled:
+    start_server = websockets.serve(handler, '0.0.0.0', config.client.port)
     loop.run_until_complete(asyncio.gather(
         start_server,
         reconnect(),

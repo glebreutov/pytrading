@@ -1,7 +1,7 @@
 from _pydecimal import Decimal
 
 from book import Level
-from exit_strategy import remove_exit_price_strategy
+from order_algos import remove_exit_price_strategy
 from orders import Broker
 from pnl import PNL
 from posmath.position import Position

@@ -4,7 +4,7 @@ from book import Book
 from posmath.side import Side
 from marketmaker import adjusted_size
 from mmparams import MMParams
-from exit_strategy import hold_exit_price_strategy
+from order_algos import hold_exit_price_strategy
 from orders import Broker, OrderManager
 from pnl import PNL
 from printout import print_book_and_orders

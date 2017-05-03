@@ -8,6 +8,26 @@ from mm.book import BipolarContainer, Level
 from mm.orders import Exec
 
 
+class EMAHolder:
+    def __init__(self, window_time):
+        self.window_time = window_time
+        self.values = []
+
+    def add(self, val):
+        self.values.append((time.time(), val))
+
+    def calc_ema(self):
+        if len(self.values) == 0:
+            return 0
+        self.values = [x for x in self.values if x[0] > time.time() - self.window_time]
+        ema = self.values[0][1]
+        k = Decimal(2 / (len(self.values) + 1))
+        for val_time, val in self.values[1:]:
+            ema = round(val * k + ema * (1 - k), 4)
+
+        return ema
+
+
 class PNL:
     def __init__(self, fee):
         self.method = "NONE"
@@ -17,7 +37,7 @@ class PNL:
         self.clean_closed_pnl = Decimal('0')
         self.exit_price = Decimal('0')
         self.fee = Decimal(fee)
-        self.ema = 0
+        self.ema = EMAHolder(5 * 60)
         self.zero_position_time = time.time()
 
     def execution(self, tx: Exec):
@@ -40,15 +60,10 @@ class PNL:
 
     def quote_changed(self, quote):
         self.nbbo.set_side(quote.side, quote.price)
-        k = Decimal(2 / (40 + 1))
         if self.nbbo.bid() == 0 or self.nbbo.ask() == 0:
             return
-
-        mid_price = (self.nbbo.bid() + self.nbbo.ask())/2
-        if self.ema == 0:
-            self.ema = mid_price
-        else:
-            self.ema = round(mid_price * k + self.ema * (1 - k), 4)
+        mid_price = (self.nbbo.bid() + self.nbbo.ask()) / 2
+        self.ema.add(mid_price)
 
     def balance(self):
         return self.pos.balance

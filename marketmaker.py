@@ -2,12 +2,12 @@ from decimal import Decimal
 
 import time
 
-from mm.exit_strategy import calc_price, calc_price_between_levels, price_on_a_depth
+from mm.app_config import AppConfig, MarketmakerConfig, VenueConfig
+
+from mm.order_algos import price_on_a_depth, enter_ema, ema_constraint
 from mm.event_hub import ImportantEvent
-from mm.exit_strategy import stop_loss_exit_strategy
+from mm.order_algos import stop_loss_exit_strategy
 from mm.orders import RiskManager, OrderStatus
-from mm.mmparams import MMParams
-from posmath.position import Position
 from posmath.side import Side
 
 
@@ -27,10 +27,11 @@ class Marketmaker:
     ENTER_TAG = 0
     EXIT_TAG = 1
 
-    def __init__(self, engine, config):
+    def __init__(self, engine):
         self.last_updated_time = time.time()
         self.engine = engine
-        self.config = MMParams(config)
+        self.config: MarketmakerConfig = self.engine.config.marketmaker
+        self.venue_config: VenueConfig = self.engine.config.venue
         # engine.book.quote_subscribers.append(self)
 
     def book_is_valid(self):
@@ -38,7 +39,7 @@ class Marketmaker:
         ask_quote = self.engine.book.quote(Side.ASK)
         return bid_quote is not None \
                and ask_quote is not None \
-               and min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind_entry.bid() \
+               and min(bid_quote.volume(), ask_quote.volume()) >= self.config.liq_behind.bid() \
                and min(bid_quote.levels(), ask_quote.levels()) > self.config.min_levels
 
     def no_orders_for_tag(self, tag):
@@ -58,13 +59,18 @@ class Marketmaker:
         return abs(order.price - new_price) > self.config.price_tolerance
 
     def enter_market(self):
-
+        method_both = ""
         for side in Side.sides:
             if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.EXIT_TAG):
-                self.engine.execution.order(Marketmaker.ENTER_TAG, side)
-                size = adjusted_size(self.config.order_sizes.side(side), side, self.engine.pnl.position())
-                price = price_on_a_depth(self.engine.book.quote(side), self.config.liq_behind_entry.side(side), size)
-                if self.price_changed(Marketmaker.ENTER_TAG, side, price, size) and size >= self.config.min_order_size:
+                pnl = self.engine.pnl
+                quote = self.engine.book.quote(side)
+                size = adjusted_size(self.config.order_size.side(side), side, pnl.position())
+
+                depth_price = price_on_a_depth(self.engine.book.quote(side), size, self.config, self.venue_config)
+                ema_price = enter_ema(quote=quote, ema=pnl.ema.calc_ema(), ac=self.config, vc=self.venue_config)
+                price, method = ema_constraint(depth_price, ema_price, side)
+                method_both = method + " " + method_both
+                if self.price_changed(Marketmaker.ENTER_TAG, side, price, size) and size >= self.venue_config.min_order_size:
                     self.engine.execution.request(
                         tag=Marketmaker.ENTER_TAG,
                         side=side,
@@ -72,7 +78,7 @@ class Marketmaker:
                         size=str(size)
                     )
                 self.engine.execution.cancel(Marketmaker.EXIT_TAG, side)
-                self.engine.pnl.set_exit_method("ENTER")
+                pnl.set_exit_method(method_both)
             else:
                 self.engine.execution.cancel(Marketmaker.ENTER_TAG, side)
 
@@ -85,10 +91,10 @@ class Marketmaker:
         if self.book_is_valid() and self.no_orders_for_tag(Marketmaker.ENTER_TAG):
 
             exit_position, method = stop_loss_exit_strategy(self.engine.book, self.engine.pnl,
-                                                            self.config, should_loss())
+                                                            self.config, self.venue_config, should_loss())
             price_or_size = self.price_changed(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                                exit_position.abs_position())
-            if self.engine.pnl.abs_position() >= self.config.min_order_size \
+            if self.engine.pnl.abs_position() >= self.venue_config.min_order_size \
                     and price_or_size:
                 self.engine.execution.request(Marketmaker.EXIT_TAG, exit_position.side(), exit_position.price(),
                                               str(exit_position.abs_position()))
@@ -102,7 +108,7 @@ class Marketmaker:
         elif risk_status == RiskManager.EXIT_ONLY:
             self.exit_market()
         elif risk_status == RiskManager.NORMAL:
-            if self.engine.pnl.abs_position() < self.config.min_order_size:
+            if self.engine.pnl.abs_position() < self.venue_config.min_order_size:
                 self.enter_market()
             else:
                 self.exit_market()
@@ -111,7 +117,7 @@ class Marketmaker:
     #     self.on_tick()
 
     def on_md(self):
-        if time.time() - self.last_updated_time >= 1:
+        if time.time() - self.last_updated_time >= self.config.refresh_timout:
             self.on_tick()
             self.last_updated_time = time.time()
 

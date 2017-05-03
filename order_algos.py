@@ -1,10 +1,36 @@
 from decimal import Decimal
 
+from mm.app_config import MarketmakerConfig, VenueConfig
 from mm.book import Book, Level
-from mm.mmparams import MMParams
 from mm.pnl import PNL
 from posmath.position import Position
 from posmath.side import Side
+
+
+def ema_constraint(depth_price, ema_price, side):
+    sign = Side.sign(side)
+
+    # ema 100 price 101 side bid
+    delta = sign * ema_price - sign * depth_price
+    return (ema_price, "EMA") if delta < 0 else (depth_price, "ENTER")
+
+
+def enter_ema(quote: Level, ema: Decimal, ac: MarketmakerConfig, vc: VenueConfig):
+
+    sign = Side.sign(quote.side)
+
+    def calc_ema_price():
+        return round(Decimal(ema - sign * (ema / 100 * ac.ema_work_perc)), 4)
+
+    def stick_to_quote(price):
+        try:
+            under_price = next((x.price for x in quote if sign * x.price - sign * price <= 0))
+            return under_price + sign * vc.tick_size if under_price != price else under_price
+        except StopIteration:
+            return price
+
+    return stick_to_quote(calc_ema_price())
+
 
 
 def price_not_better_than(calc_price, ema_price, side):
@@ -15,11 +41,11 @@ def price_not_better_than(calc_price, ema_price, side):
         return calc_price
 
 
-def price_on_a_depth(top_quote, liq_behind, size, min_step=Decimal('0.0001')):
+def price_on_a_depth(top_quote, size, ac: MarketmakerConfig, vc: VenueConfig):
     quote_array = []
     quote_liq = Decimal('0')
     side = top_quote.side
-    liq_adj = liq_behind - size
+    liq_adj = ac.liq_behind.side(side) - size
     prev_price = Decimal('0')
 
     for quote in top_quote:
@@ -31,7 +57,7 @@ def price_on_a_depth(top_quote, liq_behind, size, min_step=Decimal('0.0001')):
 
     last_quote = quote_array[-1]
     if last_quote[2] > liq_adj:
-        return last_quote[0] + Side.sign(side) * min_step
+        return last_quote[0] + Side.sign(side) * vc.tick_size
     else:
         return last_quote[0]
 
@@ -52,7 +78,7 @@ def calc_price_for_depth(quote: Level, liq_behind):
 # agressive order is to place on B
 
 
-def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams, loss=False):
+def stop_loss_exit_strategy(book: Book, pnl: PNL, ac: MarketmakerConfig, vc: VenueConfig, loss=False):
     def volume_behind_order(min_pos: Position):
         sign = Side.sign(min_pos.side())
         return sum([level.volume() for level in book.quote(min_pos.side())
@@ -60,11 +86,10 @@ def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams, loss=False):
 
     pos = pnl.pos
     exit_side = Side.opposite(pos.side())
-    depth = config.liq_behind_entry.side(exit_side)
-    price = price_on_a_depth(book.quote(exit_side), depth, pos.abs_position())
-    # price = calc_price_between_levels(book.quote(Side.opposite(pos.side())), config.liq_behind_exit, )
+    price = price_on_a_depth(book.quote(exit_side), pos.abs_position(), ac, vc)
+
     add_pos = pos.oppoiste_with_price(price)
-    min_margin = pos.opposite_with_margin(config.min_profit)
+    min_margin = pos.opposite_with_margin(ac.min_profit)
     remove_pos = pos.oppoiste_with_price(book.quote(pos.side()).price)
     # if (pos + remove_pos + remove_pos.fee_pos(pnl.fee)).balance > pnl.closed_pnl:
     #     return remove_pos, "REMOVE"
@@ -76,7 +101,7 @@ def stop_loss_exit_strategy(book: Book, pnl: PNL, config: MMParams, loss=False):
         return min_margin, "MIN PROFIT"
 
 
-def remove_exit_price_strategy(book: Book, pos: Position, config: MMParams, fee=Decimal(0.3)):
+def remove_exit_price_strategy(book: Book, pos: Position, config: MarketmakerConfig, fee=Decimal(0.3)):
     # pos, last_price = remove_price(book.quote(pos.side()), pos)
     # if pos.balance > 0:
     #     remove_pos = pos.oppoiste_with_price(last_price)
@@ -154,16 +179,16 @@ def test_calc_price2():
         book.increment_level(Side.ASK, price, size)
 
     price = price_on_a_depth(top_quote=book.quote(Side.ASK), liq_behind=Decimal('10'),
-                             size=Decimal('0.06'), min_step=Decimal('0.0001'))
+                             size=Decimal('0.06'), tick_size=Decimal('0.0001'))
     assert price == Decimal('1201.8404')
     print(price)
     price = price_on_a_depth(top_quote=book.quote(Side.ASK), liq_behind=Decimal('0.3'),
-                             size=Decimal('0.06'), min_step=Decimal('0.0001'))
+                             size=Decimal('0.06'), tick_size=Decimal('0.0001'))
     assert price == Decimal('1199.9998')
     print(price)
 
     price = price_on_a_depth(top_quote=book.quote(Side.ASK), liq_behind=Decimal('10.0337417'),
-                             size=Decimal('0.06'), min_step=Decimal('0.0001'))
+                             size=Decimal('0.06'), tick_size=Decimal('0.0001'))
     assert price == Decimal('1201.8405')
     print(price)
 
@@ -200,7 +225,7 @@ def test_calc_price2():
         book.increment_level(Side.ASK, price, size)
 
     price = price_on_a_depth(top_quote=book.quote(Side.ASK), liq_behind=Decimal('0.89'),
-                             size=Decimal('0.06'), min_step=Decimal('0.0001'))
+                             size=Decimal('0.06'), tick_size=Decimal('0.0001'))
     print(price)
 
     bid_book_update = [
@@ -219,7 +244,7 @@ def test_calc_price2():
         book.increment_level(Side.BID, price, size)
 
     price = price_on_a_depth(top_quote=book.quote(Side.BID), liq_behind=Decimal('0.89'),
-                             size=Decimal('0.06'), min_step=Decimal('0.0001'))
+                             size=Decimal('0.06'), tick_size=Decimal('0.0001'))
     print(price)
 
 # test_calc_price2()
