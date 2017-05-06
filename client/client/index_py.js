@@ -5,6 +5,7 @@ import BookDisplay, {toLevel} from './BookDisplay'
 import Table from './Table'
 import KV from './KV'
 import Big from 'big.js/big'
+import ReactModal from 'react-modal'
 import * as _ from 'lodash'
 
 const bookData = {
@@ -29,6 +30,11 @@ function clearStorage () {
   }
 }
 
+var login_elem;
+var password_elem;
+var authTimestamp;
+var authCount = 0;
+var warning_elem;
 const url = `ws://${window.location.hash.replace('#', '') || '127.0.0.1:5678'}`
 const socket = new WebSocket(url)
 const send = obj => socket.send(JSON.stringify(obj))
@@ -36,7 +42,16 @@ const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
 const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
 const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
-const sendAuth = (timestamp) => send({'e': 'auth', 'login': 'test', 'password': Sha('sha256').update(timestamp+'test').digest('hex')})
+const sendAuth = (timestamp, login, password) => {
+  send({'e': 'auth', 'login': login, 'password': Sha('sha256').update(timestamp + password).digest('hex')})
+};
+
+const doLogin = () => {
+  authCount++;
+  sendAuth(authTimestamp, login_elem.value, password_elem.value);
+  state.showModal= false;
+  render();
+};
 
 // Connection opened
 socket.addEventListener('open', () => {
@@ -54,7 +69,14 @@ socket.addEventListener('message', function processEvent (event) {
     return
   }
   if (msg.e === 'auth') {
-      sendAuth(msg.timestamp)
+    authTimestamp = msg.timestamp;
+    state.showModal = true;
+    render();
+    if(authCount>0) {
+      warning_elem.textContent = "Login or Password incorrect. Please type again";
+      login_elem.value = "";
+      password_elem.value="";
+    }
   }
   if (msg.e === 'book') {
     bookData.bookLevels = [].concat(
@@ -105,6 +127,20 @@ function render () {
   ReactDOM.render(
     <div>
       <h1>(╯°□°）╯︵ ┻━┻</h1>
+      <ReactModal isOpen={state.showModal} contentLabel="Login" >
+        <div>
+          <label htmlFor="login">Login:</label>
+          <input id="login" ref={(input) => login_elem = input}/>
+        </div>
+        <div>
+          <label htmlFor="password">Password:</label>
+          <input id="password" ref={(input) => password_elem = input} /><br/>
+        </div>
+        <div>
+          <p ref={(p) => warning_elem = p}/>
+        </div>
+        <button onClick={doLogin}>Login</button>
+      </ReactModal>
       <div className='controls'>
         {!state.connected && !state.error && <div>connecting...</div>}
         {state.error && <div className='error'>Error {state.error.code}</div>}

@@ -107,12 +107,14 @@ def consumer(msg):
 
 def client_auth(timestamp, msg):
     print("Authentication " + msg)
-
-    auth = json.loads(msg)
-    if auth["e"] == "auth":
-        password = config['accounts'][auth['login']]
-        return password_encode(timestamp, password) == auth['password']
-    else:
+    try:
+        auth = json.loads(msg)
+        if auth["e"] == "auth":
+            password = config.accounts.get(auth['login'])
+            return password_encode(timestamp, password) == auth['password']
+        else:
+            return False
+    except:
         return False
 
 

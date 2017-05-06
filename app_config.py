@@ -47,14 +47,13 @@ class MarketmakerConfig:
         self.refresh_timout = int(dict['refresh_timout'])
 
 
-
-
 class AppConfig:
     venue: VenueConfig = None
     logging: LoggingConfig = None
     client: ClientConfig = None
     asset: AssetConfig = None
     marketmaker: MarketmakerConfig = None
+    accounts: dict = None
 
     def __init__(self, dict):
         self.venue = VenueConfig(dict['venue'])
@@ -62,7 +61,7 @@ class AppConfig:
         self.client = ClientConfig(dict['client'])
         self.asset = AssetConfig(dict['asset'])
         self.marketmaker = MarketmakerConfig(dict['marketmaker'])
-
+        self.accounts = dict['accounts']
 
 
 def load_config(config_file):
