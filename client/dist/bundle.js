@@ -31683,11 +31683,11 @@ var sendRMCancelAll = function sendRMCancelAll() {
   return send({ 'e': 'rm', 'new_status': 'CANCELL_ALL' });
 };
 var sendAuth = function sendAuth(timestamp) {
+  authCount++;
   send({ 'e': 'auth', 'login': state.login, 'password': (0, _sha2.default)('sha256').update(timestamp + state.password).digest('hex') });
 };
 
 var doLogin = function doLogin() {
-  authCount++;
   state.login = login_elem.value;
   state.password = password_elem.value;
   sendAuth(authTimestamp);

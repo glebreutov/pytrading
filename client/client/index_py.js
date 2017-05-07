@@ -46,11 +46,11 @@ const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask'
 const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
 const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
 const sendAuth = (timestamp) => {
+  authCount++;
   send({'e': 'auth', 'login': state.login, 'password': Sha('sha256').update(timestamp + state.password).digest('hex')})
 };
 
 const doLogin = () => {
-  authCount++;
   state.login = login_elem.value;
   state.password = password_elem.value;
   sendAuth(authTimestamp);
