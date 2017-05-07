@@ -168,4 +168,32 @@ def subscribe_tickers_old():
             "rooms": ["pair-BTC-USD"]
         })
 
+order_id_counter = 100
 
+
+def sim_ack(req):
+    global order_id_counter
+    order_id_counter += 1
+    if type(req) is NewReq:
+        resp = {'oid': req.oid, 'e': 'place-order',
+                'data': {
+                    'id': order_id_counter,
+                    'pending': str(req.size),
+                    'amount': str(req.size)
+                }}
+    elif type(req) is ReplaceReq:
+        resp = {'oid': req.oid, 'e': 'cancel-replace-order',
+                'data': {
+                    'id': order_id_counter,
+                    'pending': str(req.size),
+                    'amount': str(req.size),
+                    'price': str(req.price)
+                }}
+    elif type(req) is CancelReq:
+        resp = {'oid': req.oid, 'e': 'cancel-order',
+                'data': {
+                    'order_id': req.order_id
+                }}
+    else:
+        raise RuntimeError
+    return json.dumps(resp)

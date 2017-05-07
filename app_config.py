@@ -14,6 +14,8 @@ class VenueConfig:
         self.taker_comission_percent = dict['taker_comission_percent']
         self.tick_size = Decimal(dict['tick_size'])
         self.min_order_size = Decimal(dict['min_order_size'])
+        self.start_pos = Decimal(dict['start_pos'])
+        self.start_balance = Decimal(dict['start_balance'])
 
 
 class LoggingConfig:
@@ -52,7 +54,7 @@ class AppConfig:
     logging: LoggingConfig = None
     client: ClientConfig = None
     asset: AssetConfig = None
-    marketmaker: MarketmakerConfig = None
+    algo: MarketmakerConfig = None
     accounts: dict = None
 
     def __init__(self, dict):
@@ -60,8 +62,15 @@ class AppConfig:
         self.logging = LoggingConfig(dict['logging'])
         self.client = ClientConfig(dict['client'])
         self.asset = AssetConfig(dict['asset'])
-        self.marketmaker = MarketmakerConfig(dict['marketmaker'])
+        algo_config_str: str = dict['algo']['config_class']
+        split = algo_config_str.split(".")
+
+        module = __import__(split[1], globals(), locals(), ['object'], 1)
+        class_ = getattr(module, split[-1])
+        instance = class_(dict['algo'])
+        self.algo = instance
         self.accounts = dict['accounts']
+
 
 
 def load_config(config_file):

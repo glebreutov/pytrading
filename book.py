@@ -20,6 +20,9 @@ class BipolarContainer:
     def set_side(self, side, item):
         self.container[side] = item
 
+    def __str__(self):
+        return str(self.container)
+
 
 class Level:
     def __init__(self, side, price, size):

@@ -25,6 +25,7 @@ class Engine:
         self.order_manager = OrderManager()
         self.book = Book()
         self.pnl = PNL(config.venue.taker_comission_percent)
+        self.pnl.pos = Position(pos=config.venue.start_pos, balance=config.venue.start_balance)
         self.book.quote_subscribers.append(self.pnl)
         self.execution = Broker(self.order_manager)
         self.algo = algo_class(self)
@@ -36,6 +37,7 @@ class Engine:
         self.event_hub.subscribe(self.event_log)
         self.event_hub.subscribe(self.order_manager)
         self.rm = RiskManager(self.execution, self.event_hub)
+
 
     def on_md(self, md):
         # update book

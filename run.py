@@ -14,7 +14,7 @@ from websockets import InvalidHandshake
 from mm.app_config import load_config
 from mm.event_hub import ImportantLogger
 from mm.cex_serialization import auth_request, subscribe_to_book, serialize_request, open_orders, balance, \
-    deserialize_order_event, password_encode
+    deserialize_order_event, password_encode, sim_ack
 from mm.client_serialization import serialize_book, serialize_orders, serialize_pnl, serialize_execs, \
     serialize_important_events
 from mm.engine import Engine
@@ -85,6 +85,9 @@ async def tick(websocket, data):
 
     q = engine.order_manager.request_queue
 
+    # while len(q) > 0:
+    #     req = engine.order_manager.request_queue.pop()
+    #     await tick(websocket, sim_ack(req))
     while len(q) > 0:
         req = engine.order_manager.request_queue.pop()
         sreq = serialize_request(req,config.asset.crypto, config.asset.currency)
