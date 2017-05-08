@@ -77,7 +77,9 @@ class Engine:
         try:
             self.order_manager.market_event(ev)
             if type(ev) == ErrorRequest:
-                self.event_hub.order_error(ev.descr)
+                self.event_hub.order_error(str(ev))
+                if ev.error_class != ErrorRequest.ORDER_NOT_FOUND:
+                    self.rm.set_cancel_all()
             elif type(ev) == Exec and ev.delta > 0:
                 if self.pnl.exit_method() == "REMOVE":
                     ev.fee = self.pnl.fee

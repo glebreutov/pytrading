@@ -44,7 +44,7 @@ def price_on_a_depth(top_quote, size, liq_behind, vc: VenueConfig):
 
 def enter_ema(quote: Level, ema: Decimal, ema_work_perc, vc: VenueConfig):
 
-    sign = Side.sign(quote.side)
+    sign = Decimal(Side.sign(quote.side))
 
     def calc_ema_price():
         return round(Decimal(ema - sign * (ema / 100 * ema_work_perc)), 4)
@@ -117,6 +117,7 @@ def adjusted_size(order_size, order_side, pos):
         return order_size + abs(pos)
 
 
+
 def enter_hedge(pnl: PNL, quote: Level, cfg: HedgeConfig, vc: VenueConfig):
     side = quote.side
     pos = pnl.pos
@@ -136,6 +137,7 @@ def enter_hedge(pnl: PNL, quote: Level, cfg: HedgeConfig, vc: VenueConfig):
         #depth
         depth_price = price_on_a_depth(quote, order_size, cfg.liq_behind.side(side), vc)
         depth_pos = Position(pos=order_size, side=side, price=depth_price)
+        order_size = min(order_size, cfg.max_pos - pos.abs_position())
         hedge_pos = hedge_positon_size(pos, pos.price() * (1 + cfg.hedge_perc), order_size)
 
         return hedge_pos if hedge_pos.balance > depth_pos.balance else depth_pos, "HEDGE"

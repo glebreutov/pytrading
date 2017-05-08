@@ -54,7 +54,7 @@ async def hello():
         greeting = await websocket.recv()
         print(greeting)
 
-        await websocket.send(subscribe_to_book(config.asset.crypto,config.asset.currency, 20))
+        await websocket.send(subscribe_to_book(config.asset.crypto, config.asset.currency, 20))
         last_heartbeat_time = 0
         while True:
             data = await websocket.recv()

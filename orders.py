@@ -73,16 +73,19 @@ class Cancelled(Ack):
 
 
 class ErrorRequest:
-    ORDER_NOT_FOUND = 0
-    RATE_LIMIT = 1
-    INSUFICIENT_FUNDS = 2
-    INVALID_AMOUNT = 3
-    UNEXPECTED_ERROR = 4
+    ORDER_NOT_FOUND = "ORDER_NOT_FOUND"
+    RATE_LIMIT = "RATE_LIMIT"
+    INSUFICIENT_FUNDS = "INSUFICIENT_FUNDS"
+    INVALID_AMOUNT = "INVALID_AMOUNT"
+    UNEXPECTED_ERROR = "UNEXPECTED_ERROR"
 
     def __init__(self, oid, descr, error_class):
         self.descr = descr
         self.oid = oid
         self.error_class = error_class
+
+    def __str__(self):
+        return str({'error_class': self.error_class, 'oid': str(self.oid), 'descr': self.descr})
 
 
 class Order:
@@ -101,6 +104,19 @@ class OrderStatus(Enum):
     ACK = 1
     REQ_SENT = 2
     COMPLETED = 3
+
+
+class OrderErrorException(Exception):
+    def __init__(self, req, resp, err_descr):
+        self.req = req
+        self.resp = resp
+        self.err_descr = err_descr
+
+    def __str__(self):
+        return "Order error: " + self.err_descr \
+               + "\nreq:" + str(self.req) \
+               + "\nresp: " + str(self.resp)
+
 
 
 class UnknownOid(Exception):
@@ -256,9 +272,10 @@ class OrderManager:
             # new
             # repl
             # canc
+
+            if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
+                self.remove_order(ev)
             self.remove_request(ev)
-            # if ev.error_class == ErrorRequest.ORDER_NOT_FOUND:
-            #     self.remove_order(ev)
             # else:
             #     self.remove_request(ev)
 
