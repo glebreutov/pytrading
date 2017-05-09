@@ -8,7 +8,7 @@ from mm.order_algos import price_on_a_depth, enter_ema, ema_constraint
 from mm.event_hub import ImportantEvent
 from mm.order_algos import stop_loss_exit_strategy
 from mm.orders import RiskManager, OrderStatus
-from mm.new_approach import enter_hedge, bound_to_lower_quote, HedgeConfig
+from mm.new_approach import enter_hedge, bound_price_to_lower_quote, HedgeConfig
 from posmath.side import Side
 
 
@@ -69,7 +69,6 @@ class Marketmaker:
         for side in Side.sides:
             quote = self.engine.book.quote(side)
             pos, method = enter_hedge(pnl, quote, self.config, self.venue_config)
-            pos = bound_to_lower_quote(quote, pos, self.venue_config.tick_size)
             self.place_pos(pos)
 
             if side != pnl.position_side() and pnl.pos.position() != 0:

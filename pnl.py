@@ -18,14 +18,14 @@ class EMAHolder:
 
     def calc_ema(self):
         if len(self.values) == 0:
-            return 0
+            return Decimal(0)
         self.values = [x for x in self.values if x[0] > time.time() - self.window_time]
         ema = self.values[0][1]
         k = Decimal(2 / (len(self.values) + 1))
         for val_time, val in self.values[1:]:
             ema = round(val * k + ema * (1 - k), 4)
 
-        return ema
+        return Decimal(ema)
 
 
 class PNL:
