@@ -31643,7 +31643,10 @@ var state = localStorage.getItem(lsKey) ? JSON.parse(localStorage.getItem(lsKey)
   connected: false,
   executions: [],
   log: [],
-  pnl: {}
+  pnl: {},
+  showModal: false,
+  login: null,
+  password: null
 };
 
 function clearStorage() {
@@ -31679,13 +31682,15 @@ var sendRMNormal = function sendRMNormal() {
 var sendRMCancelAll = function sendRMCancelAll() {
   return send({ 'e': 'rm', 'new_status': 'CANCELL_ALL' });
 };
-var sendAuth = function sendAuth(timestamp, login, password) {
-  send({ 'e': 'auth', 'login': login, 'password': (0, _sha2.default)('sha256').update(timestamp + password).digest('hex') });
+var sendAuth = function sendAuth(timestamp) {
+  authCount++;
+  send({ 'e': 'auth', 'login': state.login, 'password': (0, _sha2.default)('sha256').update(timestamp + state.password).digest('hex') });
 };
 
 var doLogin = function doLogin() {
-  authCount++;
-  sendAuth(authTimestamp, login_elem.value, password_elem.value);
+  state.login = login_elem.value;
+  state.password = password_elem.value;
+  sendAuth(authTimestamp);
   state.showModal = false;
   render();
 };
@@ -31707,12 +31712,16 @@ socket.addEventListener('message', function processEvent(event) {
   }
   if (msg.e === 'auth') {
     authTimestamp = msg.timestamp;
-    state.showModal = true;
-    render();
-    if (authCount > 0) {
-      warning_elem.textContent = "Login or Password incorrect. Please type again";
-      login_elem.value = "";
-      password_elem.value = "";
+    if (state.login != null && state.password != null && authCount == 0) {
+      sendAuth(authTimestamp);
+    } else {
+      state.showModal = true;
+      render();
+      if (authCount > 0) {
+        warning_elem.textContent = "Login or Password incorrect. Please type again";
+        login_elem.value = "";
+        password_elem.value = "";
+      }
     }
   }
   if (msg.e === 'book') {

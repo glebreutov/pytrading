@@ -19,6 +19,9 @@ const state = localStorage.getItem(lsKey) ? JSON.parse(localStorage.getItem(lsKe
   executions: [],
   log: [],
   pnl: {},
+  showModal: false,
+  login: null,
+  password: null
 }
 
 function clearStorage () {
@@ -42,13 +45,15 @@ const wsBookToBookEntry = side => wsEntry => toLevel(side, Big(wsEntry[0]), Big(
 const wsOrderToBookEntry = wsEntry => toLevel(wsEntry[2] === 'B' ? 'bid' : 'ask', Big(wsEntry[0]), Big(wsEntry[1]))
 const sendRMNormal = () => send({'e': 'rm', 'new_status': 'NORMAL'})
 const sendRMCancelAll = () => send({'e': 'rm', 'new_status': 'CANCELL_ALL'})
-const sendAuth = (timestamp, login, password) => {
-  send({'e': 'auth', 'login': login, 'password': Sha('sha256').update(timestamp + password).digest('hex')})
+const sendAuth = (timestamp) => {
+  authCount++;
+  send({'e': 'auth', 'login': state.login, 'password': Sha('sha256').update(timestamp + state.password).digest('hex')})
 };
 
 const doLogin = () => {
-  authCount++;
-  sendAuth(authTimestamp, login_elem.value, password_elem.value);
+  state.login = login_elem.value;
+  state.password = password_elem.value;
+  sendAuth(authTimestamp);
   state.showModal= false;
   render();
 };
@@ -70,12 +75,16 @@ socket.addEventListener('message', function processEvent (event) {
   }
   if (msg.e === 'auth') {
     authTimestamp = msg.timestamp;
-    state.showModal = true;
-    render();
-    if(authCount>0) {
-      warning_elem.textContent = "Login or Password incorrect. Please type again";
-      login_elem.value = "";
-      password_elem.value="";
+    if(state.login != null && state.password != null && authCount == 0) {
+      sendAuth(authTimestamp);
+    } else {
+      state.showModal = true;
+      render();
+      if (authCount > 0) {
+        warning_elem.textContent = "Login or Password incorrect. Please type again";
+        login_elem.value = "";
+        password_elem.value = "";
+      }
     }
   }
   if (msg.e === 'book') {
