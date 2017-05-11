@@ -152,7 +152,8 @@ def enter_hedge(pnl: PNL, quote: Level, cfg: HedgeConfig, vc: VenueConfig):
 
         order_size = min(order_size, cfg.max_pos - pos.abs_position())
         depth_pos = Position(pos=order_size, side=side, price=price)
-        hedge_pos = hedge_positon_size(pos, pos.price() * (1 + cfg.hedge_perc), order_size)
+        sign = Side.sign(pos.side())
+        hedge_pos = hedge_positon_size(pos, pos.price() - sign * (pos.price() * cfg.hedge_perc), order_size)
         hedge_pos = bound_pos_to_lower_quote(quote, hedge_pos, vc.tick_size)
         if (side == Side.BID and hedge_pos.price() < depth_pos.price()) \
                 or (side == Side.ASK and hedge_pos.price() > depth_pos.price()):
