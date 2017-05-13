@@ -37,7 +37,7 @@ engine.event_hub.subscribe(ImportantLogger(config.logging.dir))
 async def reconnect():
     try:
         await hello()
-    except (ConnectionClosed, InvalidHandshake):
+    except (ConnectionClosed, InvalidHandshake, ConnectionResetError):
         print("reconnecting...")
         await asyncio.sleep(1)
         engine.event_hub.reconnect()

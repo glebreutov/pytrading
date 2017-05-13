@@ -67,8 +67,7 @@ class Marketmaker:
     def hedge_step(self):
         pnl = self.engine.pnl
         for side in Side.sides:
-            quote = self.engine.book.quote(side)
-            pos, method = enter_hedge(pnl, quote, self.config, self.venue_config)
+            pos, method = enter_hedge(pnl, self.engine.book, side, self.config, self.venue_config)
             self.place_pos(pos)
 
             if side != pnl.position_side() and pnl.pos.position() != 0:

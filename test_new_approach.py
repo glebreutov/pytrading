@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from instant_simulator import gen_book
-from new_approach import hedge_positon_size, bound_price_to_lower_quote, bound_pos_to_lower_quote
+from new_approach import hedge_positon_size, bound_price_to_lower_quote, bound_pos_to_lower_quote, calc_target_price
 from orders import Broker, OrderManager, Ack
 from posmath.position import Position
 from posmath.side import Side
@@ -32,7 +32,31 @@ def test_stick_to_quote(position):
     print("\n\n")
 
 
+def test_target_price(pos: Position):
+    book = gen_book()
+    theo = (book.quote(Side.BID).price + book.quote(Side.ASK).price) / 2
+    target_price = calc_target_price(Decimal(theo), pos, Decimal('0.01'))
+    print(pos)
+    print("theo " + str(theo))
+    print("target " + str(target_price))
+    hedge_pos = hedge_positon_size(pos, target_price, Decimal('0.01'))
+    print("pos for target " + str(hedge_pos))
+    print("fianl pos " + str(pos + hedge_pos))
+    # print("nbbo pnl " + str(pos + hedge_pos))
+
+    print("---------")
+
 test_stick_to_quote(Position(pos='0.01', price='1300', side=Side.BID))
 test_stick_to_quote(Position(pos='0.01', price='1297', side=Side.BID))
+
 test_stick_to_quote(Position(pos='0.01', price='1300', side=Side.ASK))
 test_stick_to_quote(Position(pos='0.01', price='1302', side=Side.ASK))
+
+
+test_target_price(Position(pos='0.01', price='1300', side=Side.BID)) # good
+test_target_price(Position(pos='0.01', price='1300', side=Side.BID)) # good
+test_target_price(Position(pos='0.01', price='1500', side=Side.BID)) # perfect
+
+test_target_price(Position(pos='0.01', price='1300', side=Side.ASK))
+test_target_price(Position(pos='0.01', price='1500', side=Side.ASK))
+test_target_price(Position(pos='0.01', price='1000', side=Side.ASK))
