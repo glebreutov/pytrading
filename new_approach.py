@@ -156,8 +156,8 @@ def enter_hedge(pnl: PNL, book: Book, side, cfg: HedgeConfig, vc: VenueConfig):
         sign = Side.sign(pos.side())
         #hedge_pos = hedge_positon_size(pos, pos.price() - sign * (pos.price() * cfg.hedge_perc), order_size)
         theo = (book.quote(Side.BID).price + book.quote(Side.ASK).price) / 2
-        # target_price = calc_target_price(Decimal(theo), pos, cfg.hedge_perc)
-        hedge_pos = hedge_positon_size(pos, Decimal, order_size)
+        target_price = calc_target_price(Decimal(theo), pos, cfg.hedge_perc)
+        hedge_pos = hedge_positon_size(pos, Decimal(target_price), order_size)
         hedge_pos = bound_pos_to_lower_quote(quote, hedge_pos, vc.tick_size)
         if (side == Side.BID and hedge_pos.price() < depth_pos.price()) \
                 or (side == Side.ASK and hedge_pos.price() > depth_pos.price()):

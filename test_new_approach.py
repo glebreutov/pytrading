@@ -1,11 +1,14 @@
 from decimal import Decimal
 
-from instant_simulator import gen_book
-from new_approach import hedge_positon_size, bound_price_to_lower_quote, bound_pos_to_lower_quote, calc_target_price
-from orders import Broker, OrderManager, Ack
+from mm.app_config import load_config, AppConfig
+from mm.instant_simulator import gen_book
+from mm.new_approach import hedge_positon_size, bound_price_to_lower_quote, bound_pos_to_lower_quote, calc_target_price, \
+    enter_hedge, HedgeConfig
+from mm.orders import Broker, OrderManager, Ack
+from mm.pnl import PNL
 from posmath.position import Position
 from posmath.side import Side
-from printout import print_book_and_orders
+from mm.printout import print_book_and_orders
 
 
 def test_hedge_order():
@@ -46,6 +49,15 @@ def test_target_price(pos: Position):
 
     print("---------")
 
+
+def test_eneter_hedge(pos: Position):
+    pnl = PNL(Decimal('0.16'))
+    pnl.pos = pos
+    config: AppConfig = load_config('config.json')
+    hedge = enter_hedge(pnl, gen_book(), pos.side(), config.algo, config.venue)
+    print(hedge[0])
+    pass
+
 test_stick_to_quote(Position(pos='0.01', price='1300', side=Side.BID))
 test_stick_to_quote(Position(pos='0.01', price='1297', side=Side.BID))
 
@@ -60,3 +72,6 @@ test_target_price(Position(pos='0.01', price='1500', side=Side.BID)) # perfect
 test_target_price(Position(pos='0.01', price='1300', side=Side.ASK))
 test_target_price(Position(pos='0.01', price='1500', side=Side.ASK))
 test_target_price(Position(pos='0.01', price='1000', side=Side.ASK))
+
+
+test_eneter_hedge(Position(pos='0.01', price='1300', side=Side.ASK))
