@@ -77,6 +77,8 @@ def ema_constraint(depth_price, ema_price, side):
 #         return add_pos, "QUOTE"
 #     else:
 #         return min_margin, "ZERO PROFIT"
+def epsilon_from_theo(theo, perc, side):
+    return theo - Side.sign(side) * theo * perc
 
 
 def hedge_position(prior_pos, target_price, enter_price):
@@ -127,6 +129,7 @@ def enter_hedge(pnl: PNL, book: Book, side, cfg: HedgeConfig, vc: VenueConfig):
     side = quote.side
     pos = pnl.pos
     order_size = cfg.order_size.side(side)
+    theo = (book.quote(Side.BID).price + book.quote(Side.ASK).price) / 2
     if pos.abs_position() < vc.min_order_size:
         # depth or ema
         order_size = adjusted_size(order_size, side, pos.abs_position())
@@ -149,16 +152,17 @@ def enter_hedge(pnl: PNL, book: Book, side, cfg: HedgeConfig, vc: VenueConfig):
         #depth
         #hedge
         #order_size = adjusted_size(order_size, side, pos.abs_position())
-        method, price = depth_ema_price(cfg, order_size, pnl, quote, side, vc)
+        method, price_depth = depth_ema_price(cfg, order_size, pnl, quote, side, vc)
 
         order_size = min(order_size, cfg.max_pos - pos.abs_position())
-        depth_pos = Position(pos=order_size, side=side, price=price)
+        depth_pos = Position(pos=order_size, side=side, price=price_depth)
         sign = Side.sign(pos.side())
-        #hedge_pos = hedge_positon_size(pos, pos.price() - sign * (pos.price() * cfg.hedge_perc), order_size)
-        theo = (book.quote(Side.BID).price + book.quote(Side.ASK).price) / 2
-        target_price = calc_target_price(Decimal(theo), pos, cfg.hedge_perc)
+
+
+        target_price = theo - Side.sign(pos.side()) * theo * cfg.hedge_perc
         hedge_pos = hedge_positon_size(pos, Decimal(target_price), order_size)
         hedge_pos = bound_pos_to_lower_quote(quote, hedge_pos, vc.tick_size)
+        #return hedge_pos, "HEDGE HEDGE"
         if (side == Side.BID and hedge_pos.price() < depth_pos.price()) \
                 or (side == Side.ASK and hedge_pos.price() > depth_pos.price()):
             return hedge_pos, "HEDGE HEDGE"
@@ -171,14 +175,11 @@ def enter_hedge(pnl: PNL, book: Book, side, cfg: HedgeConfig, vc: VenueConfig):
 
 
 def calc_target_price(theo: Decimal, pos: Position, hedge_perc: Decimal):
-    exit_side = Side.opposite(pos.side())
-    sign = Side.sign(exit_side)
-    theo_target = theo - sign * theo * hedge_perc
+    #exit_side = Side.opposite(pos.side())
+    sign = Side.sign(pos.side())
+    theo_target = theo - Side.sign(pos.side()) * theo * hedge_perc
     pos_target = pos.price() - sign * theo * hedge_perc
-    if exit_side == Side.BID:
-        return min(theo_target, pos_target)
-    else:
-        return max(theo_target, pos_target)
+    return theo_target
 
 
 def depth_ema_price(cfg, order_size, pnl, quote, side, vc):

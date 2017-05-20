@@ -51,11 +51,18 @@ def test_target_price(pos: Position):
 
 
 def test_eneter_hedge(pos: Position):
+    print("pos" + str(pos))
+    book = gen_book()
     pnl = PNL(Decimal('0.16'))
+    pnl.quote_changed(book.quote(Side.BID))
+    pnl.quote_changed(book.quote(Side.ASK))
     pnl.pos = pos
     config: AppConfig = load_config('config.json')
-    hedge = enter_hedge(pnl, gen_book(), pos.side(), config.algo, config.venue)
-    print(hedge[0])
+    hedge = enter_hedge(pnl, book, pos.side(), config.algo, config.venue)
+    print("hedge " + str(hedge[0]) +" method "+hedge[1])
+    print("after hedge " + str(hedge[0]+pos))
+    #print("after hedge " + str(hedge[0]+pos))
+    print('-----------')
     pass
 
 test_stick_to_quote(Position(pos='0.01', price='1300', side=Side.BID))
@@ -73,5 +80,12 @@ test_target_price(Position(pos='0.01', price='1300', side=Side.ASK))
 test_target_price(Position(pos='0.01', price='1500', side=Side.ASK))
 test_target_price(Position(pos='0.01', price='1000', side=Side.ASK))
 
+# bought for 1300
+# risk - price goes down
+# hedge buy another for lower price
+# want to make min enter price = 1300 - 1300 *0.008
+test_eneter_hedge(Position(pos='0.1', price='1300', side=Side.BID))
+test_eneter_hedge(Position(pos='0.1', price='1300', side=Side.ASK))
 
-test_eneter_hedge(Position(pos='0.01', price='1300', side=Side.ASK))
+test_eneter_hedge(Position(pos='0.1', price='1330', side=Side.BID))
+test_eneter_hedge(Position(pos='0.1', price='1270', side=Side.ASK))
